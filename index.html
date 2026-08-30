@@ -864,7 +864,7 @@ async function syncAttemptToNotion(mode, totalPct, catTotals, reviewData, modeLa
   const nowIso = new Date().toISOString();
 
   const historyProps = {
-    'Name': {title:[{text:{content:`${nowIso.slice(0,10)} · ${modeLabelMap[mode]}`}}]},
+    '名稱': {title:[{text:{content:`${nowIso.slice(0,10)} · ${modeLabelMap[mode]}`}}]},
     '日期': {date:{start: nowIso}},
     '模式': {select:{name: modeLabelMap[mode]}},
     '總正確率': {number: totalPct},
@@ -900,7 +900,7 @@ async function syncAttemptToNotion(mode, totalPct, catTotals, reviewData, modeLa
       props['錯誤次數'] = {number: prevCount+1};
       await notionUpdatePage(existing[0].id, props);
     }else{
-      props['Name'] = {title:[{text:{content:(r.prompt||r.id).slice(0,200)}}]};
+      props['名稱'] = {title:[{text:{content:(r.prompt||r.id).slice(0,200)}}]};
       props['題目ID'] = {rich_text:[{text:{content:r.id}}]};
       props['錯誤次數'] = {number:1};
       await notionCreatePage(NOTION_CONFIG.mistakesDbId, props);
@@ -1148,7 +1148,7 @@ async function submitQuiz(){
   });
 
   const totalCorrect = Object.values(catTotals).reduce((s,c)=>s+c.c,0);
-  const totalCount = currentQuestions.length;
+  const totalCount = Object.values(catTotals).reduce((s,c)=>s+c.t,0);
   const totalPct = pctOf(totalCorrect,totalCount);
 
   const modeLabelMap = {all:'全部類別', vocab:'單字', grammar:'文法', reading:'閱讀', life:'生活單字', wrong:'複習錯題'};
