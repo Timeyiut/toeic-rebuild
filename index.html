@@ -92,6 +92,23 @@
     border-color:var(--primary);
     color:#fff;
   }
+  .subcat-row{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+  .subcat-btn{
+    font-family:var(--font-mono);
+    font-weight:600;
+    font-size:12.5px;
+    padding:7px 13px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:#F7F8FB;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .subcat-btn.active{
+    background:var(--highlight);
+    border-color:var(--highlight);
+    color:#fff;
+  }
   .mode-hint{font-size:13px;color:var(--ink-soft);margin-top:4px;}
 
   .start-btn{
@@ -283,7 +300,7 @@
   <header class="hero">
     <div class="eyebrow">多益重建計畫・練習測驗</div>
     <h1>先看得懂，再選答案</h1>
-    <p class="sub">涵蓋單字、文法、閱讀三大題型。測驗後會分析你在哪一類最弱，並給出對應的加強建議；每次成績會存起來，方便你追蹤一整年的進步。</p>
+    <p class="sub">涵蓋生活情境單字、TOEIC情境單字、文法、閱讀四大部分。測驗後會分析你在哪一類最弱，並給出對應的加強建議；每次成績會存起來，方便你追蹤一整年的進步。</p>
   </header>
 
   <!-- SETUP SCREEN -->
@@ -291,12 +308,14 @@
     <div class="panel">
       <h2>選擇練習模式</h2>
       <div class="mode-row" id="mode-row">
+        <button class="mode-btn" data-mode="life">生活情境單字（基礎）</button>
         <button class="mode-btn active" data-mode="all">全部類別（綜合測驗）</button>
-        <button class="mode-btn" data-mode="vocab">只練單字</button>
+        <button class="mode-btn" data-mode="vocab">只練單字（情境句）</button>
         <button class="mode-btn" data-mode="grammar">只練文法</button>
         <button class="mode-btn" data-mode="reading">只練閱讀</button>
         <button class="mode-btn" data-mode="wrong">複習錯題</button>
       </div>
+      <div class="subcat-row hidden" id="life-subcat-row"></div>
       <div class="mode-hint" id="mode-hint">建議每週用「全部類別」做一次綜合測驗，貼近正式考試的混合節奏。</div>
       <button class="start-btn" id="start-btn">開始測驗</button>
       <div class="listening-note">＊聽力需要真人語音，這個工具無法產生音檔，聽力練習請搭配 study-plan.md 裡建議的 VoiceTube／官方音檔。</div>
@@ -344,7 +363,7 @@
 </div>
 
 <script>
-/* ---------------- DATA ---------------- */
+/* ---------------- DATA: TOEIC-CONTEXT QUESTIONS ---------------- */
 
 const PASSAGES = {
   p1: { title: 'Office Memo', text:
@@ -367,7 +386,7 @@ Visit our new downtown branch this weekend and enjoy 20% off all items. The sale
 };
 
 const QUESTIONS = [
-  // ---- VOCAB ----
+  // ---- VOCAB (TOEIC context, sentence-blank format) ----
   {id:'v1',category:'vocab',prompt:'The company plans to _____ a new product next month.',
     options:[{t:'launch',c:true},{t:'lend',c:false},{t:'lean',c:false},{t:'lack',c:false}],
     explain:'"launch" 意指「推出（新產品）」，是商業情境中很常見的搭配用法。'},
@@ -473,21 +492,270 @@ const QUESTIONS = [
     explain:'文中寫 Members of our loyalty program receive an additional 5% discount。'},
 ];
 
-const CAT_LABEL = {vocab:'單字', grammar:'文法', reading:'閱讀'};
+/* ---------------- DATA: LIFE-SCENARIO VOCABULARY (foundation tier) ---------------- */
+
+const LIFE_SUBCATS = [
+  {key:'dining',   label:'飲食'},
+  {key:'shopping', label:'購物與金錢'},
+  {key:'transport',label:'交通與方向'},
+  {key:'weather',  label:'天氣與季節'},
+  {key:'family',   label:'家庭與人際'},
+  {key:'work',     label:'職場與工作'},
+  {key:'health',   label:'健康與身體'},
+  {key:'school',   label:'學校與學習'},
+  {key:'tech',     label:'科技與通訊'},
+  {key:'leisure',  label:'休閒娛樂'},
+  {key:'emotion',  label:'情緒與感受'},
+  {key:'verbs',    label:'基本動作動詞'},
+];
+
+const LIFE_WORDS = [
+  // dining
+  {id:'life-dining-01',subcat:'dining',word:'restaurant',pos:'n.',meaning:'餐廳',example:'We had dinner at a nice restaurant.'},
+  {id:'life-dining-02',subcat:'dining',word:'menu',pos:'n.',meaning:'菜單',example:'Can I see the menu, please?'},
+  {id:'life-dining-03',subcat:'dining',word:'order',pos:'v.',meaning:'點餐',example:'I would like to order a coffee.'},
+  {id:'life-dining-04',subcat:'dining',word:'bill',pos:'n.',meaning:'帳單',example:'Could we have the bill, please?'},
+  {id:'life-dining-05',subcat:'dining',word:'delicious',pos:'adj.',meaning:'美味的',example:'The soup is delicious.'},
+  {id:'life-dining-06',subcat:'dining',word:'hungry',pos:'adj.',meaning:'飢餓的',example:"I am hungry, let's eat."},
+  {id:'life-dining-07',subcat:'dining',word:'thirsty',pos:'adj.',meaning:'口渴的',example:'I am thirsty; I need water.'},
+  {id:'life-dining-08',subcat:'dining',word:'waiter',pos:'n.',meaning:'服務生',example:'The waiter took our order.'},
+  {id:'life-dining-09',subcat:'dining',word:'reservation',pos:'n.',meaning:'預約；訂位',example:'I made a reservation for two.'},
+  {id:'life-dining-10',subcat:'dining',word:'leftover',pos:'n.',meaning:'剩菜',example:'We took the leftovers home.'},
+  {id:'life-dining-11',subcat:'dining',word:'ingredient',pos:'n.',meaning:'食材',example:'Flour is the main ingredient.'},
+  {id:'life-dining-12',subcat:'dining',word:'recipe',pos:'n.',meaning:'食譜',example:'She followed the recipe carefully.'},
+  {id:'life-dining-13',subcat:'dining',word:'grocery',pos:'n.',meaning:'雜貨',example:'I went grocery shopping.'},
+  {id:'life-dining-14',subcat:'dining',word:'snack',pos:'n.',meaning:'點心',example:'He had a snack before dinner.'},
+  {id:'life-dining-15',subcat:'dining',word:'beverage',pos:'n.',meaning:'飲料',example:'Beverages are not included in the price.'},
+
+  // shopping
+  {id:'life-shopping-01',subcat:'shopping',word:'price',pos:'n.',meaning:'價格',example:'The price is too high for me.'},
+  {id:'life-shopping-02',subcat:'shopping',word:'discount',pos:'n.',meaning:'折扣',example:'We offer a 20% discount today.'},
+  {id:'life-shopping-03',subcat:'shopping',word:'receipt',pos:'n.',meaning:'收據',example:'Please keep your receipt.'},
+  {id:'life-shopping-04',subcat:'shopping',word:'cash',pos:'n.',meaning:'現金',example:'Do you accept cash?'},
+  {id:'life-shopping-05',subcat:'shopping',word:'credit card',pos:'n.',meaning:'信用卡',example:'I paid by credit card.'},
+  {id:'life-shopping-06',subcat:'shopping',word:'refund',pos:'n.',meaning:'退款',example:'Can I get a refund for this?'},
+  {id:'life-shopping-07',subcat:'shopping',word:'exchange',pos:'v.',meaning:'交換；換貨',example:'You can exchange it within 7 days.'},
+  {id:'life-shopping-08',subcat:'shopping',word:'expensive',pos:'adj.',meaning:'昂貴的',example:'This bag is very expensive.'},
+  {id:'life-shopping-09',subcat:'shopping',word:'cheap',pos:'adj.',meaning:'便宜的',example:'These shoes are cheap.'},
+  {id:'life-shopping-10',subcat:'shopping',word:'sale',pos:'n.',meaning:'特賣',example:'The store is having a big sale.'},
+  {id:'life-shopping-11',subcat:'shopping',word:'customer',pos:'n.',meaning:'顧客',example:'The customer asked for help.'},
+  {id:'life-shopping-12',subcat:'shopping',word:'cashier',pos:'n.',meaning:'收銀員',example:'The cashier gave me my change.'},
+  {id:'life-shopping-13',subcat:'shopping',word:'budget',pos:'n.',meaning:'預算',example:'I have a small budget this month.'},
+  {id:'life-shopping-14',subcat:'shopping',word:'afford',pos:'v.',meaning:'負擔得起',example:"I can't afford a new car."},
+  {id:'life-shopping-15',subcat:'shopping',word:'purchase',pos:'v./n.',meaning:'購買',example:'She purchased a new phone.'},
+
+  // transport
+  {id:'life-transport-01',subcat:'transport',word:'traffic',pos:'n.',meaning:'交通',example:'The traffic was very heavy this morning.'},
+  {id:'life-transport-02',subcat:'transport',word:'subway',pos:'n.',meaning:'地鐵',example:'I take the subway to work.'},
+  {id:'life-transport-03',subcat:'transport',word:'platform',pos:'n.',meaning:'月台',example:'The train is at platform 3.'},
+  {id:'life-transport-04',subcat:'transport',word:'ticket',pos:'n.',meaning:'票',example:'I bought two tickets.'},
+  {id:'life-transport-05',subcat:'transport',word:'schedule',pos:'n.',meaning:'時刻表',example:'Check the bus schedule.'},
+  {id:'life-transport-06',subcat:'transport',word:'delay',pos:'n./v.',meaning:'延誤',example:'The flight was delayed.'},
+  {id:'life-transport-07',subcat:'transport',word:'direction',pos:'n.',meaning:'方向',example:'Can you tell me the direction to the station?'},
+  {id:'life-transport-08',subcat:'transport',word:'straight',pos:'adv.',meaning:'直走',example:'Go straight and turn left.'},
+  {id:'life-transport-09',subcat:'transport',word:'turn',pos:'v.',meaning:'轉彎',example:'Turn right at the corner.'},
+  {id:'life-transport-10',subcat:'transport',word:'intersection',pos:'n.',meaning:'路口',example:'Wait at the intersection.'},
+  {id:'life-transport-11',subcat:'transport',word:'distance',pos:'n.',meaning:'距離',example:'The distance is about 2 kilometers.'},
+  {id:'life-transport-12',subcat:'transport',word:'destination',pos:'n.',meaning:'目的地',example:'We finally reached our destination.'},
+  {id:'life-transport-13',subcat:'transport',word:'traffic jam',pos:'n.',meaning:'塞車',example:'We were stuck in a traffic jam.'},
+  {id:'life-transport-14',subcat:'transport',word:'fare',pos:'n.',meaning:'車資',example:'The bus fare is 15 dollars.'},
+  {id:'life-transport-15',subcat:'transport',word:'transfer',pos:'v.',meaning:'轉車；轉乘',example:'You need to transfer at the next station.'},
+
+  // weather
+  {id:'life-weather-01',subcat:'weather',word:'weather',pos:'n.',meaning:'天氣',example:'The weather is nice today.'},
+  {id:'life-weather-02',subcat:'weather',word:'temperature',pos:'n.',meaning:'溫度',example:'The temperature dropped last night.'},
+  {id:'life-weather-03',subcat:'weather',word:'rain',pos:'n./v.',meaning:'雨',example:'It might rain tomorrow.'},
+  {id:'life-weather-04',subcat:'weather',word:'sunny',pos:'adj.',meaning:'晴朗的',example:"It's sunny outside."},
+  {id:'life-weather-05',subcat:'weather',word:'cloudy',pos:'adj.',meaning:'多雲的',example:'The sky is cloudy today.'},
+  {id:'life-weather-06',subcat:'weather',word:'windy',pos:'adj.',meaning:'有風的',example:"It's very windy on the coast."},
+  {id:'life-weather-07',subcat:'weather',word:'humid',pos:'adj.',meaning:'潮濕的',example:'Summer here is hot and humid.'},
+  {id:'life-weather-08',subcat:'weather',word:'forecast',pos:'n.',meaning:'預報',example:'The forecast says it will rain.'},
+  {id:'life-weather-09',subcat:'weather',word:'season',pos:'n.',meaning:'季節',example:'Winter is my favorite season.'},
+  {id:'life-weather-10',subcat:'weather',word:'typhoon',pos:'n.',meaning:'颱風',example:'A typhoon is coming this weekend.'},
+  {id:'life-weather-11',subcat:'weather',word:'umbrella',pos:'n.',meaning:'雨傘',example:'Bring an umbrella with you.'},
+  {id:'life-weather-12',subcat:'weather',word:'freezing',pos:'adj.',meaning:'極冷的',example:"It's freezing outside."},
+  {id:'life-weather-13',subcat:'weather',word:'mild',pos:'adj.',meaning:'溫和的',example:'The weather is mild in spring.'},
+  {id:'life-weather-14',subcat:'weather',word:'drought',pos:'n.',meaning:'乾旱',example:'The region suffered a long drought.'},
+  {id:'life-weather-15',subcat:'weather',word:'climate',pos:'n.',meaning:'氣候',example:'The climate here is very dry.'},
+
+  // family
+  {id:'life-family-01',subcat:'family',word:'parent',pos:'n.',meaning:'父母',example:'Both of my parents work in Kaohsiung.'},
+  {id:'life-family-02',subcat:'family',word:'sibling',pos:'n.',meaning:'手足',example:'I have two siblings.'},
+  {id:'life-family-03',subcat:'family',word:'relative',pos:'n.',meaning:'親戚',example:'We visited our relatives during the holiday.'},
+  {id:'life-family-04',subcat:'family',word:'neighbor',pos:'n.',meaning:'鄰居',example:'My neighbor is very friendly.'},
+  {id:'life-family-05',subcat:'family',word:'colleague',pos:'n.',meaning:'同事',example:'She had lunch with a colleague.'},
+  {id:'life-family-06',subcat:'family',word:'friendship',pos:'n.',meaning:'友誼',example:'Their friendship lasted many years.'},
+  {id:'life-family-07',subcat:'family',word:'marriage',pos:'n.',meaning:'婚姻',example:'They celebrated ten years of marriage.'},
+  {id:'life-family-08',subcat:'family',word:'divorce',pos:'n.',meaning:'離婚',example:'They decided to get a divorce.'},
+  {id:'life-family-09',subcat:'family',word:'raise',pos:'v.',meaning:'扶養',example:'They raised three children.'},
+  {id:'life-family-10',subcat:'family',word:'trust',pos:'v./n.',meaning:'信任',example:'I trust my best friend completely.'},
+  {id:'life-family-11',subcat:'family',word:'argument',pos:'n.',meaning:'爭吵',example:'They had an argument about money.'},
+  {id:'life-family-12',subcat:'family',word:'support',pos:'v.',meaning:'支持',example:'My family always supports me.'},
+  {id:'life-family-13',subcat:'family',word:'introduce',pos:'v.',meaning:'介紹',example:'Let me introduce you to my sister.'},
+  {id:'life-family-14',subcat:'family',word:'stranger',pos:'n.',meaning:'陌生人',example:"Don't talk to strangers."},
+  {id:'life-family-15',subcat:'family',word:'generation',pos:'n.',meaning:'世代',example:'Three generations live in this house.'},
+
+  // work
+  {id:'life-work-01',subcat:'work',word:'job',pos:'n.',meaning:'工作',example:'She found a new job last month.'},
+  {id:'life-work-02',subcat:'work',word:'salary',pos:'n.',meaning:'薪水',example:'The salary is paid monthly.'},
+  {id:'life-work-03',subcat:'work',word:'employee',pos:'n.',meaning:'員工',example:'The company has 50 employees.'},
+  {id:'life-work-04',subcat:'work',word:'employer',pos:'n.',meaning:'雇主',example:'My employer is very supportive.'},
+  {id:'life-work-05',subcat:'work',word:'resign',pos:'v.',meaning:'辭職',example:'He decided to resign from his job.'},
+  {id:'life-work-06',subcat:'work',word:'promote',pos:'v.',meaning:'升職',example:'She was promoted to manager.'},
+  {id:'life-work-07',subcat:'work',word:'interview',pos:'n.',meaning:'面試',example:'I have a job interview tomorrow.'},
+  {id:'life-work-08',subcat:'work',word:'resume',pos:'n.',meaning:'履歷',example:'Please send your resume by email.'},
+  {id:'life-work-09',subcat:'work',word:'deadline',pos:'n.',meaning:'截止日期',example:'The deadline is next Friday.'},
+  {id:'life-work-10',subcat:'work',word:'overtime',pos:'n.',meaning:'加班',example:'He often works overtime.'},
+  {id:'life-work-11',subcat:'work',word:'teamwork',pos:'n.',meaning:'團隊合作',example:'Teamwork is important for this project.'},
+  {id:'life-work-12',subcat:'work',word:'meeting',pos:'n.',meaning:'會議',example:'We have a meeting at 10 a.m.'},
+  {id:'life-work-13',subcat:'work',word:'project',pos:'n.',meaning:'專案',example:'The project will finish next month.'},
+  {id:'life-work-14',subcat:'work',word:'task',pos:'n.',meaning:'任務',example:'This task must be done today.'},
+  {id:'life-work-15',subcat:'work',word:'supervisor',pos:'n.',meaning:'主管',example:'My supervisor gave me some feedback.'},
+
+  // health
+  {id:'life-health-01',subcat:'health',word:'hospital',pos:'n.',meaning:'醫院',example:'He was taken to the hospital.'},
+  {id:'life-health-02',subcat:'health',word:'doctor',pos:'n.',meaning:'醫生',example:'I need to see a doctor.'},
+  {id:'life-health-03',subcat:'health',word:'medicine',pos:'n.',meaning:'藥',example:'Take this medicine after meals.'},
+  {id:'life-health-04',subcat:'health',word:'symptom',pos:'n.',meaning:'症狀',example:'What symptoms do you have?'},
+  {id:'life-health-05',subcat:'health',word:'headache',pos:'n.',meaning:'頭痛',example:'I have a bad headache.'},
+  {id:'life-health-06',subcat:'health',word:'fever',pos:'n.',meaning:'發燒',example:'The child has a high fever.'},
+  {id:'life-health-07',subcat:'health',word:'injury',pos:'n.',meaning:'受傷',example:'He suffered a minor injury.'},
+  {id:'life-health-08',subcat:'health',word:'exercise',pos:'n./v.',meaning:'運動',example:'Exercise is good for your health.'},
+  {id:'life-health-09',subcat:'health',word:'diet',pos:'n.',meaning:'飲食',example:'She is on a healthy diet.'},
+  {id:'life-health-10',subcat:'health',word:'healthy',pos:'adj.',meaning:'健康的',example:'Eat more vegetables to stay healthy.'},
+  {id:'life-health-11',subcat:'health',word:'sick',pos:'adj.',meaning:'生病的',example:'I feel sick today.'},
+  {id:'life-health-12',subcat:'health',word:'appointment',pos:'n.',meaning:'預約',example:"I have a doctor's appointment at 3."},
+  {id:'life-health-13',subcat:'health',word:'prescription',pos:'n.',meaning:'處方',example:'The doctor gave me a prescription.'},
+  {id:'life-health-14',subcat:'health',word:'recover',pos:'v.',meaning:'復原',example:'It will take time to recover.'},
+  {id:'life-health-15',subcat:'health',word:'pain',pos:'n.',meaning:'疼痛',example:'She felt pain in her leg.'},
+
+  // school
+  {id:'life-school-01',subcat:'school',word:'student',pos:'n.',meaning:'學生',example:'He is a college student.'},
+  {id:'life-school-02',subcat:'school',word:'teacher',pos:'n.',meaning:'老師',example:'My teacher is very patient.'},
+  {id:'life-school-03',subcat:'school',word:'lesson',pos:'n.',meaning:'課程',example:"Today's lesson is about grammar."},
+  {id:'life-school-04',subcat:'school',word:'homework',pos:'n.',meaning:'作業',example:'I need to finish my homework.'},
+  {id:'life-school-05',subcat:'school',word:'exam',pos:'n.',meaning:'考試',example:'The exam is next Monday.'},
+  {id:'life-school-06',subcat:'school',word:'grade',pos:'n.',meaning:'成績',example:'She got a good grade on the test.'},
+  {id:'life-school-07',subcat:'school',word:'subject',pos:'n.',meaning:'科目',example:'Math is my favorite subject.'},
+  {id:'life-school-08',subcat:'school',word:'classroom',pos:'n.',meaning:'教室',example:'The classroom is on the third floor.'},
+  {id:'life-school-09',subcat:'school',word:'graduate',pos:'v.',meaning:'畢業',example:'He will graduate next year.'},
+  {id:'life-school-10',subcat:'school',word:'degree',pos:'n.',meaning:'學位',example:'She has a degree in biology.'},
+  {id:'life-school-11',subcat:'school',word:'scholarship',pos:'n.',meaning:'獎學金',example:'He received a scholarship for college.'},
+  {id:'life-school-12',subcat:'school',word:'textbook',pos:'n.',meaning:'教科書',example:'Bring your textbook to class.'},
+  {id:'life-school-13',subcat:'school',word:'lecture',pos:'n.',meaning:'講座',example:'The lecture starts at 2 p.m.'},
+  {id:'life-school-14',subcat:'school',word:'university',pos:'n.',meaning:'大學',example:'She studies at a university in Taipei.'},
+  {id:'life-school-15',subcat:'school',word:'skill',pos:'n.',meaning:'技能',example:'English is a useful skill.'},
+
+  // tech
+  {id:'life-tech-01',subcat:'tech',word:'computer',pos:'n.',meaning:'電腦',example:'I use my computer every day.'},
+  {id:'life-tech-02',subcat:'tech',word:'internet',pos:'n.',meaning:'網路',example:'The internet connection is slow.'},
+  {id:'life-tech-03',subcat:'tech',word:'email',pos:'n.',meaning:'電子郵件',example:'Please check your email.'},
+  {id:'life-tech-04',subcat:'tech',word:'password',pos:'n.',meaning:'密碼',example:"Don't share your password with anyone."},
+  {id:'life-tech-05',subcat:'tech',word:'device',pos:'n.',meaning:'裝置',example:'This device needs to be charged.'},
+  {id:'life-tech-06',subcat:'tech',word:'update',pos:'v./n.',meaning:'更新',example:'Please update the software.'},
+  {id:'life-tech-07',subcat:'tech',word:'download',pos:'v.',meaning:'下載',example:'You can download the file here.'},
+  {id:'life-tech-08',subcat:'tech',word:'upload',pos:'v.',meaning:'上傳',example:'I uploaded the photos last night.'},
+  {id:'life-tech-09',subcat:'tech',word:'connect',pos:'v.',meaning:'連接',example:'Connect your phone to the Wi-Fi.'},
+  {id:'life-tech-10',subcat:'tech',word:'signal',pos:'n.',meaning:'訊號',example:'The signal here is very weak.'},
+  {id:'life-tech-11',subcat:'tech',word:'battery',pos:'n.',meaning:'電池',example:'My battery is almost dead.'},
+  {id:'life-tech-12',subcat:'tech',word:'charge',pos:'v.',meaning:'充電',example:'I need to charge my phone.'},
+  {id:'life-tech-13',subcat:'tech',word:'application',pos:'n.',meaning:'應用程式',example:'This application is very useful.'},
+  {id:'life-tech-14',subcat:'tech',word:'website',pos:'n.',meaning:'網站',example:'You can find it on our website.'},
+  {id:'life-tech-15',subcat:'tech',word:'message',pos:'n.',meaning:'訊息',example:'I sent you a message this morning.'},
+
+  // leisure
+  {id:'life-leisure-01',subcat:'leisure',word:'hobby',pos:'n.',meaning:'嗜好',example:'Reading is my favorite hobby.'},
+  {id:'life-leisure-02',subcat:'leisure',word:'movie',pos:'n.',meaning:'電影',example:'We watched a movie last night.'},
+  {id:'life-leisure-03',subcat:'leisure',word:'concert',pos:'n.',meaning:'演唱會',example:'The concert was amazing.'},
+  {id:'life-leisure-04',subcat:'leisure',word:'exhibition',pos:'n.',meaning:'展覽',example:'There is an art exhibition downtown.'},
+  {id:'life-leisure-05',subcat:'leisure',word:'festival',pos:'n.',meaning:'節慶',example:'The lantern festival is in February.'},
+  {id:'life-leisure-06',subcat:'leisure',word:'vacation',pos:'n.',meaning:'假期',example:'We are planning a vacation to Hualien.'},
+  {id:'life-leisure-07',subcat:'leisure',word:'relax',pos:'v.',meaning:'放鬆',example:'I like to relax on weekends.'},
+  {id:'life-leisure-08',subcat:'leisure',word:'entertainment',pos:'n.',meaning:'娛樂',example:'The city offers a lot of entertainment.'},
+  {id:'life-leisure-09',subcat:'leisure',word:'audience',pos:'n.',meaning:'觀眾',example:'The audience clapped loudly.'},
+  {id:'life-leisure-10',subcat:'leisure',word:'performance',pos:'n.',meaning:'表演',example:'Her performance was impressive.'},
+  {id:'life-leisure-11',subcat:'leisure',word:'exciting',pos:'adj.',meaning:'令人興奮的',example:'The game was very exciting.'},
+  {id:'life-leisure-12',subcat:'leisure',word:'boring',pos:'adj.',meaning:'無聊的',example:'The movie was a bit boring.'},
+  {id:'life-leisure-13',subcat:'leisure',word:'amusement park',pos:'n.',meaning:'遊樂園',example:'We spent the day at an amusement park.'},
+  {id:'life-leisure-14',subcat:'leisure',word:'weekend',pos:'n.',meaning:'週末',example:'See you next weekend!'},
+  {id:'life-leisure-15',subcat:'leisure',word:'outdoor',pos:'adj.',meaning:'戶外的',example:'We enjoy outdoor activities.'},
+
+  // emotion
+  {id:'life-emotion-01',subcat:'emotion',word:'happy',pos:'adj.',meaning:'快樂的',example:'She looks very happy today.'},
+  {id:'life-emotion-02',subcat:'emotion',word:'sad',pos:'adj.',meaning:'難過的',example:'He felt sad about the news.'},
+  {id:'life-emotion-03',subcat:'emotion',word:'angry',pos:'adj.',meaning:'生氣的',example:'My boss was angry about the delay.'},
+  {id:'life-emotion-04',subcat:'emotion',word:'nervous',pos:'adj.',meaning:'緊張的',example:'I feel nervous before exams.'},
+  {id:'life-emotion-05',subcat:'emotion',word:'excited',pos:'adj.',meaning:'興奮的',example:'The kids are excited about the trip.'},
+  {id:'life-emotion-06',subcat:'emotion',word:'worried',pos:'adj.',meaning:'擔心的',example:'She is worried about her health.'},
+  {id:'life-emotion-07',subcat:'emotion',word:'confident',pos:'adj.',meaning:'有信心的',example:'He feels confident about the interview.'},
+  {id:'life-emotion-08',subcat:'emotion',word:'disappointed',pos:'adj.',meaning:'失望的',example:'I was disappointed with the result.'},
+  {id:'life-emotion-09',subcat:'emotion',word:'surprised',pos:'adj.',meaning:'驚訝的',example:'We were surprised by the news.'},
+  {id:'life-emotion-10',subcat:'emotion',word:'embarrassed',pos:'adj.',meaning:'尷尬的',example:'I felt embarrassed after the mistake.'},
+  {id:'life-emotion-11',subcat:'emotion',word:'proud',pos:'adj.',meaning:'驕傲的',example:'Her parents are proud of her.'},
+  {id:'life-emotion-12',subcat:'emotion',word:'relieved',pos:'adj.',meaning:'鬆一口氣的',example:'I was relieved when the test was over.'},
+  {id:'life-emotion-13',subcat:'emotion',word:'confused',pos:'adj.',meaning:'困惑的',example:"I'm confused about the instructions."},
+  {id:'life-emotion-14',subcat:'emotion',word:'grateful',pos:'adj.',meaning:'感激的',example:"I'm grateful for your help."},
+  {id:'life-emotion-15',subcat:'emotion',word:'calm',pos:'adj.',meaning:'冷靜的',example:'Please stay calm and wait.'},
+
+  // verbs
+  {id:'life-verbs-01',subcat:'verbs',word:'arrive',pos:'v.',meaning:'抵達',example:'We arrived at the airport on time.'},
+  {id:'life-verbs-02',subcat:'verbs',word:'leave',pos:'v.',meaning:'離開',example:'He will leave the office at six.'},
+  {id:'life-verbs-03',subcat:'verbs',word:'bring',pos:'v.',meaning:'帶來',example:'Please bring your ID card.'},
+  {id:'life-verbs-04',subcat:'verbs',word:'borrow',pos:'v.',meaning:'借（入）',example:'Can I borrow your pen?'},
+  {id:'life-verbs-05',subcat:'verbs',word:'lend',pos:'v.',meaning:'借（出）',example:'Could you lend me some money?'},
+  {id:'life-verbs-06',subcat:'verbs',word:'return',pos:'v.',meaning:'歸還；返回',example:'Please return the book by Friday.'},
+  {id:'life-verbs-07',subcat:'verbs',word:'prepare',pos:'v.',meaning:'準備',example:'We need to prepare for the meeting.'},
+  {id:'life-verbs-08',subcat:'verbs',word:'decide',pos:'v.',meaning:'決定',example:'She decided to change her job.'},
+  {id:'life-verbs-09',subcat:'verbs',word:'suggest',pos:'v.',meaning:'建議',example:"I suggest we leave earlier."},
+  {id:'life-verbs-10',subcat:'verbs',word:'explain',pos:'v.',meaning:'解釋',example:'Can you explain this word to me?'},
+  {id:'life-verbs-11',subcat:'verbs',word:'improve',pos:'v.',meaning:'改善',example:'I want to improve my English.'},
+  {id:'life-verbs-12',subcat:'verbs',word:'continue',pos:'v.',meaning:'繼續',example:"Let's continue the discussion."},
+  {id:'life-verbs-13',subcat:'verbs',word:'avoid',pos:'v.',meaning:'避免',example:'Try to avoid heavy traffic.'},
+  {id:'life-verbs-14',subcat:'verbs',word:'allow',pos:'v.',meaning:'允許',example:'Smoking is not allowed here.'},
+  {id:'life-verbs-15',subcat:'verbs',word:'require',pos:'v.',meaning:'需要',example:'This job requires good communication skills.'},
+];
+
+function buildLifeQuestion(wordObj, distractorPool){
+  const others = distractorPool.filter(w=>w.id!==wordObj.id);
+  const picks = shuffle(others).slice(0,3).map(w=>({t:w.meaning,c:false}));
+  const options = shuffle([{t:wordObj.meaning,c:true}, ...picks]);
+  return {
+    id: wordObj.id,
+    category:'life',
+    subcat: wordObj.subcat,
+    prompt: `${wordObj.word} (${wordObj.pos})`,
+    options,
+    explain: `例句：${wordObj.example}`
+  };
+}
+
+function getQuestionById(id){
+  if(id.startsWith('life-')){
+    const w = LIFE_WORDS.find(x=>x.id===id);
+    if(!w) return null;
+    const samesub = LIFE_WORDS.filter(x=>x.subcat===w.subcat);
+    return buildLifeQuestion(w, samesub.length>=4 ? samesub : LIFE_WORDS);
+  }
+  return QUESTIONS.find(q=>q.id===id) || null;
+}
+
+const CAT_LABEL = {vocab:'單字', grammar:'文法', reading:'閱讀', life:'生活單字'};
 
 const ADVICE = {
   vocab: '單字量還不穩定，建議照計畫每天用 SRS（Anki／Quizlet）背 8–10 個新字，並且一定要搭配例句，不要只背中文意思。可以先從辦公室、旅遊、財務等主題字群開始。',
   grammar: '文法規則掌握還不穩，建議先複習八大詞性、常見時態與主詞動詞一致這幾個基礎點，每次只練一個文法重點，搭配例句反覆造句會比死背規則有效。',
-  reading: '閱讀理解還需要加強，建議先練習「不查字典抓大意」，讀完一段先問自己「這段在講什麼」，再回頭找細節題的答案，並且練習控制每題作答時間。'
+  reading: '閱讀理解還需要加強，建議先練習「不查字典抓大意」，讀完一段先問自己「這段在講什麼」，再回頭找細節題的答案，並且練習控制每題作答時間。',
+  life: '生活情境單字還不熟，建議先鎖定一個分類（例如飲食、交通），每天只練那一類，練到看到單字能秒懂中文意思，再換下一個分類，不用急著全部一起練。'
 };
 
 /* ---------------- STATE ---------------- */
 
 let currentMode = 'all';
+let selectedLifeSubcat = 'all';
 let currentQuestions = [];
 let userAnswers = {}; // id -> selected option index (within shuffled options)
 
-/* ---------------- STORAGE HELPERS (localStorage, for GitHub Pages hosting) ---------------- */
+/* ---------------- STORAGE HELPERS ---------------- */
 
 async function loadHistory(){
   try{
@@ -539,23 +807,44 @@ async function renderHistory(){
   }).join('');
 }
 
+/* ---------------- RENDER: LIFE SUBCATEGORY CHIPS ---------------- */
+
+function renderLifeSubcatRow(){
+  const row = document.getElementById('life-subcat-row');
+  const chips = [{key:'all',label:'全部生活單字（180字）'}, ...LIFE_SUBCATS];
+  row.innerHTML = chips.map(c=>{
+    const count = c.key==='all' ? LIFE_WORDS.length : LIFE_WORDS.filter(w=>w.subcat===c.key).length;
+    const active = c.key===selectedLifeSubcat ? 'active' : '';
+    return `<button type="button" class="subcat-btn ${active}" data-subcat="${c.key}">${c.label}${c.key!=='all'?` (${count})`:''}</button>`;
+  }).join('');
+  row.querySelectorAll('.subcat-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      selectedLifeSubcat = btn.dataset.subcat;
+      row.querySelectorAll('.subcat-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
 /* ---------------- MODE SELECTION ---------------- */
 
 const modeHints = {
   all: '建議每週用「全部類別」做一次綜合測驗，貼近正式考試的混合節奏。',
-  vocab: '只出單字題，適合第一階段打底時集中練習。',
+  vocab: '出現在句子空格中的單字題，適合已經認得基礎單字、要練習「情境中選字」的階段。',
   grammar: '只出文法題，適合針對某個文法弱點反覆練習。',
   reading: '只出閱讀題，練習抓文章大意與細節定位。',
+  life: '依生活情境分類練習基礎單字，直接測驗「英文單字 → 中文意思」，適合單字量還很少、看到單字完全不會、只能用猜的階段。建議先選一個分類集中練。',
   wrong: '只出上一次答錯的題目，適合考前或每週複習使用。'
 };
 
 document.getElementById('mode-row').addEventListener('click', (e)=>{
   const btn = e.target.closest('.mode-btn');
   if(!btn) return;
-  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#mode-row .mode-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   currentMode = btn.dataset.mode;
   document.getElementById('mode-hint').textContent = modeHints[currentMode];
+  document.getElementById('life-subcat-row').classList.toggle('hidden', currentMode!=='life');
 });
 
 document.getElementById('start-btn').addEventListener('click', startQuiz);
@@ -566,11 +855,18 @@ async function startQuiz(){
     pool = QUESTIONS;
   }else if(currentMode==='wrong'){
     const wrongIds = await loadWrongIds();
-    pool = QUESTIONS.filter(q=>wrongIds.includes(q.id));
+    pool = wrongIds.map(id=>getQuestionById(id)).filter(Boolean);
     if(pool.length===0){
-      alert('目前沒有記錄到錯題，先完成一次「全部類別」或單類別測驗吧。');
+      alert('目前沒有記錄到錯題，先完成一次測驗吧。');
       return;
     }
+  }else if(currentMode==='life'){
+    const subPool = selectedLifeSubcat==='all' ? LIFE_WORDS : LIFE_WORDS.filter(w=>w.subcat===selectedLifeSubcat);
+    if(subPool.length===0){ alert('請先選一個生活情境分類。'); return; }
+    pool = subPool.map(w=>{
+      const distractPool = selectedLifeSubcat==='all' ? LIFE_WORDS.filter(x=>x.subcat===w.subcat) : subPool;
+      return buildLifeQuestion(w, distractPool);
+    });
   }else{
     pool = QUESTIONS.filter(q=>q.category===currentMode);
   }
@@ -647,7 +943,7 @@ async function submitQuiz(){
     if(!proceed) return;
   }
 
-  const catTotals = {vocab:{c:0,t:0}, grammar:{c:0,t:0}, reading:{c:0,t:0}};
+  const catTotals = {vocab:{c:0,t:0}, grammar:{c:0,t:0}, reading:{c:0,t:0}, life:{c:0,t:0}};
   const wrongIds = [];
   const reviewData = [];
 
@@ -673,7 +969,7 @@ async function submitQuiz(){
   const totalPct = pctOf(totalCorrect,totalCount);
 
   // save history
-  const modeLabelMap = {all:'全部類別', vocab:'單字', grammar:'文法', reading:'閱讀', wrong:'複習錯題'};
+  const modeLabelMap = {all:'全部類別', vocab:'單字', grammar:'文法', reading:'閱讀', life:'生活單字', wrong:'複習錯題'};
   const history = await loadHistory();
   history.push({
     date: new Date().toISOString(),
@@ -681,7 +977,8 @@ async function submitQuiz(){
     totalPct,
     vocabPct: catTotals.vocab.t? pctOf(catTotals.vocab.c,catTotals.vocab.t) : null,
     grammarPct: catTotals.grammar.t? pctOf(catTotals.grammar.c,catTotals.grammar.t) : null,
-    readingPct: catTotals.reading.t? pctOf(catTotals.reading.c,catTotals.reading.t) : null
+    readingPct: catTotals.reading.t? pctOf(catTotals.reading.c,catTotals.reading.t) : null,
+    lifePct: catTotals.life.t? pctOf(catTotals.life.c,catTotals.life.t) : null
   });
   await saveHistory(history);
   await saveWrongIds(wrongIds);
@@ -716,7 +1013,7 @@ function renderResults(totalPct, catTotals, reviewData){
   if(weakestCat && weakestPct < 100){
     adviceBox.innerHTML = `<b>本次最弱的類別：${CAT_LABEL[weakestCat]}（${weakestPct}%）</b><br>${ADVICE[weakestCat]}`;
   }else if(weakestCat){
-    adviceBox.innerHTML = `<b>這回全對，很扎實！</b> 可以考慮切換到其他類別，或提高練習難度，持續累積更大的單字量與更複雜的題型。`;
+    adviceBox.innerHTML = `<b>這回全對，很扎實！</b> 可以考慮切換到其他分類，或提高練習難度，持續累積更大的單字量與更複雜的題型。`;
   }else{
     adviceBox.innerHTML = `完成測驗！持續每週練習，弱點分析會隨著紀錄累積越來越準確。`;
   }
@@ -747,6 +1044,7 @@ document.getElementById('back-home-btn').addEventListener('click', async ()=>{
 });
 
 /* ---------------- INIT ---------------- */
+renderLifeSubcatRow();
 renderHistory();
 </script>
 </body>
