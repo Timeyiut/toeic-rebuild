@@ -217,6 +217,20 @@
   }
   .opt-text{font-size:14.5px;}
   .opt input{display:none;}
+  .opt.correct{border-color:var(--correct);background:var(--correct-bg);}
+  .opt.correct .bubble{background:var(--correct);border-color:var(--correct);color:#fff;}
+  .opt.wrong{border-color:var(--wrong);background:var(--wrong-bg);}
+  .opt.wrong .bubble{background:var(--wrong);border-color:var(--wrong);color:#fff;}
+  .opt.disabled{cursor:default;}
+  .inline-feedback{
+    margin-top:12px;
+    padding:10px 13px;
+    border-radius:8px;
+    font-size:13.5px;
+  }
+  .inline-feedback.correct{background:var(--correct-bg);color:var(--correct);}
+  .inline-feedback.wrong{background:var(--wrong-bg);color:var(--wrong);}
+  .inline-feedback .inline-explain{margin-top:4px;color:var(--ink-soft);font-weight:400;}
 
   .submit-bar{
     display:flex;
@@ -305,6 +319,16 @@
 
   <!-- SETUP SCREEN -->
   <div id="setup-screen">
+    <div class="panel" id="sync-panel">
+      <h2>跨裝置同步</h2>
+      <div class="mode-hint" id="sync-status">尚未設定雲端同步，目前紀錄只存在這台裝置的瀏覽器裡。</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <input type="text" id="sync-code-input" placeholder="設定一組同步代碼（例如英文名+生日）" style="flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-body);font-size:14px;color:var(--ink);">
+        <button class="ghost-btn" id="sync-code-btn">設定 / 切換同步代碼</button>
+      </div>
+      <div class="listening-note">在另一台裝置輸入「完全相同」的同步代碼，兩邊的學習紀錄就會同步顯示同一份。代碼只是用來對應資料位置，不是密碼，請不要用它保護機密資訊。設定步驟見 README。</div>
+    </div>
+
     <div class="panel">
       <h2>選擇練習模式</h2>
       <div class="mode-row" id="mode-row">
@@ -332,7 +356,7 @@
     <div class="progress-label" id="progress-label"></div>
     <form id="quiz-form"></form>
     <div class="submit-bar">
-      <button type="button" class="start-btn" id="submit-btn">交卷，看結果</button>
+      <button type="button" class="start-btn" id="submit-btn">結束測驗，看總結</button>
     </div>
   </div>
 
@@ -362,7 +386,70 @@
   <footer>成績記錄在你目前使用的這個瀏覽器（localStorage），換裝置或清除瀏覽器資料會看不到之前的紀錄。</footer>
 </div>
 
-<script>
+<script type="module">
+/* ---------------- CLOUD SYNC SETUP (Firebase Firestore) ----------------
+   1. 到 https://console.firebase.google.com 建立一個免費專案
+   2. 開啟 Firestore Database（測試模式即可，之後照 README 換成正式規則）
+   3. 專案設定 → 新增網頁應用程式 → 把拿到的設定值貼到下面 firebaseConfig
+   如果沒有設定（維持 YOUR_API_KEY 原樣），這個工具會自動退回「只存在本機瀏覽器」模式，不會壞掉。
+------------------------------------------------------------------------ */
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+let db = null;
+let cloudConfigured = false;
+try{
+  if(firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY"){
+    const fbApp = initializeApp(firebaseConfig);
+    db = getFirestore(fbApp);
+    cloudConfigured = true;
+  }
+}catch(e){ cloudConfigured = false; }
+
+const SYNC_CODE_KEY = 'toeic_sync_code';
+function getSyncCode(){ return localStorage.getItem(SYNC_CODE_KEY) || ''; }
+function setSyncCode(code){ localStorage.setItem(SYNC_CODE_KEY, code); }
+function sanitizeDocId(code){
+  return code.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'-').slice(0,60) || 'default';
+}
+function getProgressDocRef(){
+  if(!cloudConfigured) return null;
+  const code = getSyncCode();
+  if(!code) return null;
+  return doc(db, 'toeic_progress', sanitizeDocId(code));
+}
+
+function updateSyncStatusUI(){
+  const el = document.getElementById('sync-status');
+  const input = document.getElementById('sync-code-input');
+  const code = getSyncCode();
+  if(!cloudConfigured){
+    el.textContent = '尚未設定 Firebase，目前紀錄只存在這台裝置的瀏覽器裡。設定方式見 README「跨裝置同步設定」。';
+  }else if(!code){
+    el.textContent = '已連接雲端，但還沒有設定同步代碼——請在下面輸入一組代碼（兩台裝置要輸入完全相同的代碼）。';
+  }else{
+    el.textContent = `已連接雲端同步，目前同步代碼：「${code}」。在其他裝置輸入相同代碼即可看到同一份學習紀錄。`;
+    if(input) input.value = code;
+  }
+}
+
+document.getElementById('sync-code-btn').addEventListener('click', async ()=>{
+  const val = document.getElementById('sync-code-input').value.trim();
+  if(!val){ alert('請輸入一組同步代碼。'); return; }
+  setSyncCode(val);
+  updateSyncStatusUI();
+  await renderHistory();
+});
+
 /* ---------------- DATA: TOEIC-CONTEXT QUESTIONS ---------------- */
 
 const PASSAGES = {
@@ -755,25 +842,39 @@ let selectedLifeSubcat = 'all';
 let currentQuestions = [];
 let userAnswers = {}; // id -> selected option index (within shuffled options)
 
-/* ---------------- STORAGE HELPERS ---------------- */
+/* ---------------- STORAGE HELPERS (cloud-first via Firestore, localStorage as cache/fallback) ---------------- */
 
-async function loadHistory(){
-  try{
-    const raw = localStorage.getItem('toeic_history');
-    return raw ? JSON.parse(raw) : [];
-  }catch(e){ return []; }
+async function loadProgress(){
+  const ref = getProgressDocRef();
+  if(ref){
+    try{
+      const snap = await getDoc(ref);
+      if(snap.exists()){
+        const data = snap.data();
+        const history = data.history || [];
+        const wrongIds = data.wrongIds || [];
+        try{ localStorage.setItem('toeic_history', JSON.stringify(history)); }catch(e){}
+        try{ localStorage.setItem('toeic_wrong_ids', JSON.stringify(wrongIds)); }catch(e){}
+        return {history, wrongIds};
+      }
+    }catch(e){ console.warn('雲端讀取失敗，改用本機備份資料', e); }
+  }
+  let history=[], wrongIds=[];
+  try{ history = JSON.parse(localStorage.getItem('toeic_history')||'[]'); }catch(e){}
+  try{ wrongIds = JSON.parse(localStorage.getItem('toeic_wrong_ids')||'[]'); }catch(e){}
+  return {history, wrongIds};
 }
-async function saveHistory(list){
-  try{ localStorage.setItem('toeic_history', JSON.stringify(list.slice(-50))); }catch(e){}
-}
-async function loadWrongIds(){
-  try{
-    const raw = localStorage.getItem('toeic_wrong_ids');
-    return raw ? JSON.parse(raw) : [];
-  }catch(e){ return []; }
-}
-async function saveWrongIds(ids){
-  try{ localStorage.setItem('toeic_wrong_ids', JSON.stringify(ids)); }catch(e){}
+
+async function saveProgress(history, wrongIds){
+  const trimmedHistory = history.slice(-50);
+  try{ localStorage.setItem('toeic_history', JSON.stringify(trimmedHistory)); }catch(e){}
+  try{ localStorage.setItem('toeic_wrong_ids', JSON.stringify(wrongIds)); }catch(e){}
+  const ref = getProgressDocRef();
+  if(ref){
+    try{
+      await setDoc(ref, {history:trimmedHistory, wrongIds, updatedAt: Date.now()});
+    }catch(e){ console.warn('雲端同步失敗，已先存在本機，稍後重新整理會再嘗試同步', e); }
+  }
 }
 
 /* ---------------- UTIL ---------------- */
@@ -794,7 +895,7 @@ function pctOf(correct,total){
 /* ---------------- RENDER: HISTORY ---------------- */
 
 async function renderHistory(){
-  const list = await loadHistory();
+  const {history: list} = await loadProgress();
   const el = document.getElementById('history-list');
   if(list.length===0){
     el.innerHTML = '<div class="empty-note">還沒有測驗紀錄，完成第一次測驗後會顯示在這裡。</div>';
@@ -854,7 +955,7 @@ async function startQuiz(){
   if(currentMode==='all'){
     pool = QUESTIONS;
   }else if(currentMode==='wrong'){
-    const wrongIds = await loadWrongIds();
+    const {wrongIds} = await loadProgress();
     pool = wrongIds.map(id=>getQuestionById(id)).filter(Boolean);
     if(pool.length===0){
       alert('目前沒有記錄到錯題，先完成一次測驗吧。');
@@ -887,7 +988,7 @@ async function startQuiz(){
 /* ---------------- RENDER: QUIZ ---------------- */
 
 function renderQuiz(){
-  document.getElementById('progress-label').textContent = `共 ${currentQuestions.length} 題`;
+  updateLiveStats();
   const form = document.getElementById('quiz-form');
   let html = '';
   let lastPassage = null;
@@ -923,13 +1024,43 @@ function renderQuiz(){
   form.querySelectorAll('.opt').forEach(optEl=>{
     optEl.addEventListener('click', ()=>{
       const card = optEl.closest('.q-card');
-      card.querySelectorAll('.opt').forEach(o=>o.classList.remove('selected'));
+      if(card.dataset.answered==='1') return; // already answered, first pick is locked in
+      const qid = card.dataset.qid;
+      const q = currentQuestions.find(x=>x.id===qid);
+      if(!q) return;
+
+      const oi = parseInt(optEl.dataset.oi,10);
+      userAnswers[qid] = oi;
+      card.dataset.answered = '1';
+
+      const isCorrect = q.shuffledOptions[oi].c;
+      card.querySelectorAll('.opt').forEach(o=>{
+        o.classList.add('disabled');
+        const idx = parseInt(o.dataset.oi,10);
+        if(q.shuffledOptions[idx].c) o.classList.add('correct');
+      });
+      if(!isCorrect) optEl.classList.add('wrong');
       optEl.classList.add('selected');
       optEl.querySelector('input').checked = true;
-      const qid = card.dataset.qid;
-      userAnswers[qid] = parseInt(optEl.dataset.oi,10);
+
+      let fb = card.querySelector('.inline-feedback');
+      if(!fb){
+        fb = document.createElement('div');
+        fb.className = 'inline-feedback';
+        card.appendChild(fb);
+      }
+      fb.classList.add(isCorrect ? 'correct' : 'wrong');
+      fb.innerHTML = `<b>${isCorrect ? '✓ 答對了！' : '✗ 答錯了'}</b><div class="inline-explain">${q.explain}</div>`;
+
+      updateLiveStats();
     });
   });
+}
+
+function updateLiveStats(){
+  const answered = Object.keys(userAnswers).filter(id=>currentQuestions.some(q=>q.id===id));
+  const correct = currentQuestions.filter(q=>userAnswers[q.id]!==undefined && q.shuffledOptions[userAnswers[q.id]].c).length;
+  document.getElementById('progress-label').textContent = `共 ${currentQuestions.length} 題・已作答 ${answered.length} 題・答對 ${correct} 題`;
 }
 
 document.getElementById('submit-btn').addEventListener('click', submitQuiz);
@@ -937,10 +1068,10 @@ document.getElementById('submit-btn').addEventListener('click', submitQuiz);
 /* ---------------- SUBMIT & RESULTS ---------------- */
 
 async function submitQuiz(){
-  const unanswered = currentQuestions.filter(q=>!(q.id in userAnswers));
-  if(unanswered.length>0){
-    const proceed = confirm(`還有 ${unanswered.length} 題沒作答，確定要交卷嗎？未作答視為答錯。`);
-    if(!proceed) return;
+  const answeredCount = currentQuestions.filter(q=>userAnswers[q.id]!==undefined).length;
+  if(answeredCount===0){
+    alert('先作答至少一題，才能看到本次總結喔。');
+    return;
   }
 
   const catTotals = {vocab:{c:0,t:0}, grammar:{c:0,t:0}, reading:{c:0,t:0}, life:{c:0,t:0}};
@@ -948,9 +1079,10 @@ async function submitQuiz(){
   const reviewData = [];
 
   currentQuestions.forEach(q=>{
-    catTotals[q.category].t++;
     const selIdx = userAnswers[q.id];
-    const isCorrect = selIdx!==undefined && q.shuffledOptions[selIdx].c;
+    if(selIdx===undefined) return; // skip anything not answered — no need to finish everything
+    catTotals[q.category].t++;
+    const isCorrect = q.shuffledOptions[selIdx].c;
     if(isCorrect){ catTotals[q.category].c++; }
     else{ wrongIds.push(q.id); }
     const correctOpt = q.shuffledOptions.find(o=>o.c);
@@ -970,7 +1102,7 @@ async function submitQuiz(){
 
   // save history
   const modeLabelMap = {all:'全部類別', vocab:'單字', grammar:'文法', reading:'閱讀', life:'生活單字', wrong:'複習錯題'};
-  const history = await loadHistory();
+  const {history} = await loadProgress();
   history.push({
     date: new Date().toISOString(),
     modeLabel: modeLabelMap[currentMode],
@@ -980,8 +1112,7 @@ async function submitQuiz(){
     readingPct: catTotals.reading.t? pctOf(catTotals.reading.c,catTotals.reading.t) : null,
     lifePct: catTotals.life.t? pctOf(catTotals.life.c,catTotals.life.t) : null
   });
-  await saveHistory(history);
-  await saveWrongIds(wrongIds);
+  await saveProgress(history, wrongIds);
 
   renderResults(totalPct, catTotals, reviewData);
 
@@ -1044,6 +1175,7 @@ document.getElementById('back-home-btn').addEventListener('click', async ()=>{
 });
 
 /* ---------------- INIT ---------------- */
+updateSyncStatusUI();
 renderLifeSubcatRow();
 renderHistory();
 </script>
