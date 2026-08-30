@@ -320,13 +320,9 @@
   <!-- SETUP SCREEN -->
   <div id="setup-screen">
     <div class="panel" id="sync-panel">
-      <h2>跨裝置同步</h2>
-      <div class="mode-hint" id="sync-status">尚未設定雲端同步，目前紀錄只存在這台裝置的瀏覽器裡。</div>
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-        <input type="text" id="sync-code-input" placeholder="設定一組同步代碼（例如英文名+生日）" style="flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-body);font-size:14px;color:var(--ink);">
-        <button class="ghost-btn" id="sync-code-btn">設定 / 切換同步代碼</button>
-      </div>
-      <div class="listening-note">在另一台裝置輸入「完全相同」的同步代碼，兩邊的學習紀錄就會同步顯示同一份。代碼只是用來對應資料位置，不是密碼，請不要用它保護機密資訊。設定步驟見 README。</div>
+      <h2>Notion 雲端記憶</h2>
+      <div class="mode-hint" id="sync-status">尚未設定 Notion 同步，目前紀錄只存在這台裝置的瀏覽器裡。</div>
+      <div class="listening-note">設定好之後，測驗紀錄和錯題會即時同步進你的 Notion 資料庫，換裝置打開網頁也能看到同一份資料，還可以直接在 Notion 裡瀏覽、加筆記。設定步驟見 README「Notion 雲端同步設定」。</div>
     </div>
 
     <div class="panel">
@@ -378,7 +374,7 @@
     </div>
 
     <div class="action-row">
-      <button class="ghost-btn" id="retry-wrong-btn">只複習這次的錯題</button>
+      <button class="ghost-btn" id="retry-wrong-btn">複習待複習的錯題</button>
       <button class="ghost-btn" id="back-home-btn">回到主畫面</button>
     </div>
   </div>
@@ -387,68 +383,59 @@
 </div>
 
 <script type="module">
-/* ---------------- CLOUD SYNC SETUP (Firebase Firestore) ----------------
-   1. 到 https://console.firebase.google.com 建立一個免費專案
-   2. 開啟 Firestore Database（測試模式即可，之後照 README 換成正式規則）
-   3. 專案設定 → 新增網頁應用程式 → 把拿到的設定值貼到下面 firebaseConfig
-   如果沒有設定（維持 YOUR_API_KEY 原樣），這個工具會自動退回「只存在本機瀏覽器」模式，不會壞掉。
+/* ---------------- CLOUD SYNC SETUP (Notion, via a small Cloudflare Worker proxy) ----------------
+   Notion's API blocks direct browser calls (no CORS headers), so a thin serverless proxy
+   (cloudflare-worker/notion-proxy.js in this repo) sits in between and holds the Notion secret.
+   Deploy the Worker (see README "Notion 雲端同步設定"), then fill in the three values below.
+   If left as the placeholder values, the app quietly falls back to local-only storage.
 ------------------------------------------------------------------------ */
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js';
-
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+const NOTION_CONFIG = {
+  proxyUrl: "YOUR_WORKER_URL",        // 例如 https://toeic-notion-proxy.yourname.workers.dev
+  historyDbId: "YOUR_HISTORY_DB_ID",  // 「TOEIC 學習紀錄」資料庫 ID
+  mistakesDbId: "YOUR_MISTAKES_DB_ID" // 「TOEIC 錯題本」資料庫 ID
 };
 
-let db = null;
-let cloudConfigured = false;
-try{
-  if(firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY"){
-    const fbApp = initializeApp(firebaseConfig);
-    db = getFirestore(fbApp);
-    cloudConfigured = true;
-  }
-}catch(e){ cloudConfigured = false; }
+const notionConfigured =
+  NOTION_CONFIG.proxyUrl && NOTION_CONFIG.proxyUrl !== "YOUR_WORKER_URL" &&
+  NOTION_CONFIG.historyDbId && NOTION_CONFIG.historyDbId !== "YOUR_HISTORY_DB_ID" &&
+  NOTION_CONFIG.mistakesDbId && NOTION_CONFIG.mistakesDbId !== "YOUR_MISTAKES_DB_ID";
 
-const SYNC_CODE_KEY = 'toeic_sync_code';
-function getSyncCode(){ return localStorage.getItem(SYNC_CODE_KEY) || ''; }
-function setSyncCode(code){ localStorage.setItem(SYNC_CODE_KEY, code); }
-function sanitizeDocId(code){
-  return code.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'-').slice(0,60) || 'default';
+async function notionQuery(dbId, filter, sorts){
+  const resp = await fetch(`${NOTION_CONFIG.proxyUrl}/query`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({dbId, filter, sorts})
+  });
+  if(!resp.ok) throw new Error('notion query failed: '+resp.status);
+  const data = await resp.json();
+  return data.results || [];
 }
-function getProgressDocRef(){
-  if(!cloudConfigured) return null;
-  const code = getSyncCode();
-  if(!code) return null;
-  return doc(db, 'toeic_progress', sanitizeDocId(code));
+async function notionCreatePage(dbId, properties){
+  const resp = await fetch(`${NOTION_CONFIG.proxyUrl}/pages`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({dbId, properties})
+  });
+  if(!resp.ok) throw new Error('notion create failed: '+resp.status);
+  return resp.json();
+}
+async function notionUpdatePage(pageId, properties){
+  const resp = await fetch(`${NOTION_CONFIG.proxyUrl}/pages/${pageId}`, {
+    method:'PATCH',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({properties})
+  });
+  if(!resp.ok) throw new Error('notion update failed: '+resp.status);
+  return resp.json();
 }
 
 function updateSyncStatusUI(){
   const el = document.getElementById('sync-status');
-  const input = document.getElementById('sync-code-input');
-  const code = getSyncCode();
-  if(!cloudConfigured){
-    el.textContent = '尚未設定 Firebase，目前紀錄只存在這台裝置的瀏覽器裡。設定方式見 README「跨裝置同步設定」。';
-  }else if(!code){
-    el.textContent = '已連接雲端，但還沒有設定同步代碼——請在下面輸入一組代碼（兩台裝置要輸入完全相同的代碼）。';
-  }else{
-    el.textContent = `已連接雲端同步，目前同步代碼：「${code}」。在其他裝置輸入相同代碼即可看到同一份學習紀錄。`;
-    if(input) input.value = code;
-  }
+  if(!el) return;
+  el.textContent = notionConfigured
+    ? '已連接 Notion 雲端同步——測驗紀錄和錯題會自動同步進你的 Notion 資料庫，換裝置打開網頁也能看到同一份資料。'
+    : '尚未設定 Notion 同步，目前紀錄只存在這台裝置的瀏覽器裡（localStorage）。設定方式見 README「Notion 雲端同步設定」。';
 }
-
-document.getElementById('sync-code-btn').addEventListener('click', async ()=>{
-  const val = document.getElementById('sync-code-input').value.trim();
-  if(!val){ alert('請輸入一組同步代碼。'); return; }
-  setSyncCode(val);
-  updateSyncStatusUI();
-  await renderHistory();
-});
 
 /* ---------------- DATA: TOEIC-CONTEXT QUESTIONS ---------------- */
 
@@ -842,38 +829,82 @@ let selectedLifeSubcat = 'all';
 let currentQuestions = [];
 let userAnswers = {}; // id -> selected option index (within shuffled options)
 
-/* ---------------- STORAGE HELPERS (cloud-first via Firestore, localStorage as cache/fallback) ---------------- */
+/* ---------------- STORAGE HELPERS (local cache always; Notion sync layered on top when configured) ---------------- */
 
-async function loadProgress(){
-  const ref = getProgressDocRef();
-  if(ref){
-    try{
-      const snap = await getDoc(ref);
-      if(snap.exists()){
-        const data = snap.data();
-        const history = data.history || [];
-        const wrongIds = data.wrongIds || [];
-        try{ localStorage.setItem('toeic_history', JSON.stringify(history)); }catch(e){}
-        try{ localStorage.setItem('toeic_wrong_ids', JSON.stringify(wrongIds)); }catch(e){}
-        return {history, wrongIds};
-      }
-    }catch(e){ console.warn('雲端讀取失敗，改用本機備份資料', e); }
-  }
-  let history=[], wrongIds=[];
-  try{ history = JSON.parse(localStorage.getItem('toeic_history')||'[]'); }catch(e){}
-  try{ wrongIds = JSON.parse(localStorage.getItem('toeic_wrong_ids')||'[]'); }catch(e){}
-  return {history, wrongIds};
+const CAT_LABEL_FOR_NOTION = {vocab:'單字', grammar:'文法', reading:'閱讀', life:'生活單字'};
+
+function cacheHistoryLocally(entry){
+  let list = [];
+  try{ list = JSON.parse(localStorage.getItem('toeic_history_cache')||'[]'); }catch(e){}
+  list.push(entry);
+  try{ localStorage.setItem('toeic_history_cache', JSON.stringify(list.slice(-50))); }catch(e){}
 }
 
-async function saveProgress(history, wrongIds){
-  const trimmedHistory = history.slice(-50);
-  try{ localStorage.setItem('toeic_history', JSON.stringify(trimmedHistory)); }catch(e){}
-  try{ localStorage.setItem('toeic_wrong_ids', JSON.stringify(wrongIds)); }catch(e){}
-  const ref = getProgressDocRef();
-  if(ref){
-    try{
-      await setDoc(ref, {history:trimmedHistory, wrongIds, updatedAt: Date.now()});
-    }catch(e){ console.warn('雲端同步失敗，已先存在本機，稍後重新整理會再嘗試同步', e); }
+function cacheLastWrongIdsLocally(ids){
+  try{ localStorage.setItem('toeic_last_wrong_ids', JSON.stringify(ids)); }catch(e){}
+}
+
+function pageToHistoryItem(page){
+  const p = page.properties || {};
+  return {
+    date: p['日期']?.date?.start || '',
+    modeLabel: p['模式']?.select?.name || '',
+    totalPct: p['總正確率']?.number ?? null,
+    vocabPct: p['單字']?.number ?? null,
+    grammarPct: p['文法']?.number ?? null,
+    readingPct: p['閱讀']?.number ?? null,
+    lifePct: p['生活單字']?.number ?? null,
+  };
+}
+
+// Fire-and-forget push of one finished attempt to Notion: one history row, plus
+// upserts into the persistent mistake-log database (mastery-aware).
+async function syncAttemptToNotion(mode, totalPct, catTotals, reviewData, modeLabelMap){
+  if(!notionConfigured) return;
+  const nowIso = new Date().toISOString();
+
+  const historyProps = {
+    'Name': {title:[{text:{content:`${nowIso.slice(0,10)} · ${modeLabelMap[mode]}`}}]},
+    '日期': {date:{start: nowIso}},
+    '模式': {select:{name: modeLabelMap[mode]}},
+    '總正確率': {number: totalPct},
+  };
+  Object.keys(catTotals).forEach(cat=>{
+    if(catTotals[cat].t>0){
+      historyProps[CAT_LABEL_FOR_NOTION[cat]] = {number: pctOf(catTotals[cat].c, catTotals[cat].t)};
+    }
+  });
+  await notionCreatePage(NOTION_CONFIG.historyDbId, historyProps);
+
+  for(const r of reviewData){
+    let existing = [];
+    try{ existing = await notionQuery(NOTION_CONFIG.mistakesDbId, {property:'題目ID', rich_text:{equals:r.id}}); }
+    catch(e){ console.warn('查詢 Notion 錯題本失敗', r.id, e); continue; }
+
+    if(r.isCorrect){
+      if(existing.length>0 && existing[0].properties['狀態']?.select?.name !== '已熟悉'){
+        await notionUpdatePage(existing[0].id, {'狀態':{select:{name:'已熟悉'}}});
+      }
+      continue;
+    }
+
+    const props = {
+      '分類': {select:{name: CAT_LABEL_FOR_NOTION[r.category] || r.category || '未分類'}},
+      '正確答案': {rich_text:[{text:{content:(r.correctText||'').slice(0,2000)}}]},
+      '解析': {rich_text:[{text:{content:(r.explain||'').slice(0,2000)}}]},
+      '最近錯誤日期': {date:{start: nowIso}},
+      '狀態': {select:{name:'待複習'}},
+    };
+    if(existing.length>0){
+      const prevCount = existing[0].properties['錯誤次數']?.number || 0;
+      props['錯誤次數'] = {number: prevCount+1};
+      await notionUpdatePage(existing[0].id, props);
+    }else{
+      props['Name'] = {title:[{text:{content:(r.prompt||r.id).slice(0,200)}}]};
+      props['題目ID'] = {rich_text:[{text:{content:r.id}}]};
+      props['錯誤次數'] = {number:1};
+      await notionCreatePage(NOTION_CONFIG.mistakesDbId, props);
+    }
   }
 }
 
@@ -895,8 +926,19 @@ function pctOf(correct,total){
 /* ---------------- RENDER: HISTORY ---------------- */
 
 async function renderHistory(){
-  const {history: list} = await loadProgress();
   const el = document.getElementById('history-list');
+  let list = [];
+  if(notionConfigured){
+    try{
+      const rows = await notionQuery(NOTION_CONFIG.historyDbId, undefined, [{property:'日期', direction:'descending'}]);
+      list = rows.map(pageToHistoryItem).reverse(); // put back in ascending order to match local-cache convention
+    }catch(e){
+      console.warn('讀取 Notion 學習紀錄失敗，改用本機快取', e);
+    }
+  }
+  if(list.length===0){
+    try{ list = JSON.parse(localStorage.getItem('toeic_history_cache')||'[]'); }catch(e){}
+  }
   if(list.length===0){
     el.innerHTML = '<div class="empty-note">還沒有測驗紀錄，完成第一次測驗後會顯示在這裡。</div>';
     return;
@@ -955,10 +997,19 @@ async function startQuiz(){
   if(currentMode==='all'){
     pool = QUESTIONS;
   }else if(currentMode==='wrong'){
-    const {wrongIds} = await loadProgress();
-    pool = wrongIds.map(id=>getQuestionById(id)).filter(Boolean);
+    let activeIds = [];
+    if(notionConfigured){
+      try{
+        const rows = await notionQuery(NOTION_CONFIG.mistakesDbId, {property:'狀態', select:{equals:'待複習'}});
+        activeIds = rows.map(pg=>pg.properties?.['題目ID']?.rich_text?.[0]?.plain_text).filter(Boolean);
+      }catch(e){ console.warn('讀取 Notion 錯題本失敗，改用本機最近一次的錯題', e); }
+    }
+    if(activeIds.length===0){
+      try{ activeIds = JSON.parse(localStorage.getItem('toeic_last_wrong_ids')||'[]'); }catch(e){}
+    }
+    pool = activeIds.map(id=>getQuestionById(id)).filter(Boolean);
     if(pool.length===0){
-      alert('目前沒有記錄到錯題，先完成一次測驗吧。');
+      alert('目前沒有待複習的錯題，先完成一次測驗吧。');
       return;
     }
   }else if(currentMode==='life'){
@@ -1075,7 +1126,6 @@ async function submitQuiz(){
   }
 
   const catTotals = {vocab:{c:0,t:0}, grammar:{c:0,t:0}, reading:{c:0,t:0}, life:{c:0,t:0}};
-  const wrongIds = [];
   const reviewData = [];
 
   currentQuestions.forEach(q=>{
@@ -1084,11 +1134,12 @@ async function submitQuiz(){
     catTotals[q.category].t++;
     const isCorrect = q.shuffledOptions[selIdx].c;
     if(isCorrect){ catTotals[q.category].c++; }
-    else{ wrongIds.push(q.id); }
     const correctOpt = q.shuffledOptions.find(o=>o.c);
     reviewData.push({
+      id:q.id,
       prompt:q.prompt,
       category:q.category,
+      subcat:q.subcat||null,
       isCorrect,
       selectedText: selIdx!==undefined ? q.shuffledOptions[selIdx].t : '（未作答）',
       correctText: correctOpt.t,
@@ -1100,25 +1151,32 @@ async function submitQuiz(){
   const totalCount = currentQuestions.length;
   const totalPct = pctOf(totalCorrect,totalCount);
 
-  // save history
   const modeLabelMap = {all:'全部類別', vocab:'單字', grammar:'文法', reading:'閱讀', life:'生活單字', wrong:'複習錯題'};
-  const {history} = await loadProgress();
-  history.push({
-    date: new Date().toISOString(),
+  const nowIso = new Date().toISOString();
+
+  const historyEntry = {
+    date: nowIso,
     modeLabel: modeLabelMap[currentMode],
     totalPct,
     vocabPct: catTotals.vocab.t? pctOf(catTotals.vocab.c,catTotals.vocab.t) : null,
     grammarPct: catTotals.grammar.t? pctOf(catTotals.grammar.c,catTotals.grammar.t) : null,
     readingPct: catTotals.reading.t? pctOf(catTotals.reading.c,catTotals.reading.t) : null,
     lifePct: catTotals.life.t? pctOf(catTotals.life.c,catTotals.life.t) : null
-  });
-  await saveProgress(history, wrongIds);
+  };
 
+  // always keep a fast local record, regardless of whether Notion is configured
+  cacheHistoryLocally(historyEntry);
+  cacheLastWrongIdsLocally(reviewData.filter(r=>!r.isCorrect).map(r=>r.id));
+
+  // show results immediately — don't make the person wait on network calls
   renderResults(totalPct, catTotals, reviewData);
-
   document.getElementById('quiz-screen').classList.add('hidden');
   document.getElementById('result-screen').classList.remove('hidden');
   window.scrollTo(0,0);
+
+  // sync to Notion in the background (best-effort, non-blocking)
+  syncAttemptToNotion(currentMode, totalPct, catTotals, reviewData, modeLabelMap)
+    .catch(e=>console.warn('Notion 背景同步失敗（本機紀錄不受影響）', e));
 }
 
 function renderResults(totalPct, catTotals, reviewData){
