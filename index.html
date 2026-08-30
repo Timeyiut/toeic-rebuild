@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多益重建計畫｜練習測驗</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDEFF4;
+    --surface:#FFFFFF;
+    --ink:#14213D;
+    --ink-soft:#57617A;
+    --line:#D8DCE6;
+    --line-soft:#E7E9F0;
+    --primary:#26426E;
+    --primary-dark:#1B3157;
+    --correct:#2F6F4E;
+    --correct-bg:#E6F0EA;
+    --wrong:#B3403A;
+    --wrong-bg:#F6E8E7;
+    --highlight:#B9791F;
+    --highlight-bg:#FBF0DD;
+    --font-display:'Spectral', Georgia, serif;
+    --font-body:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px;}
+
+  header.hero{
+    border-bottom:1px solid var(--line);
+    padding-bottom:24px;
+    margin-bottom:28px;
+  }
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  h1{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:30px;
+    margin:0 0 8px;
+    letter-spacing:-.01em;
+  }
+  .sub{color:var(--ink-soft);font-size:15px;max-width:56ch;}
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:20px 22px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    font-family:var(--font-display);
+    font-size:17px;
+    margin:0 0 12px;
+  }
+
+  /* mode selector */
+  .mode-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+  .mode-btn{
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:13.5px;
+    padding:9px 16px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .mode-btn:hover{border-color:var(--primary);}
+  .mode-btn.active{
+    background:var(--primary);
+    border-color:var(--primary);
+    color:#fff;
+  }
+  .mode-hint{font-size:13px;color:var(--ink-soft);margin-top:4px;}
+
+  .start-btn{
+    margin-top:14px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:15px;
+    padding:12px 22px;
+    border-radius:8px;
+    border:none;
+    background:var(--primary);
+    color:#fff;
+    cursor:pointer;
+  }
+  .start-btn:hover{background:var(--primary-dark);}
+  .start-btn:disabled{background:#A9B2C4;cursor:not-allowed;}
+
+  /* history */
+  .hist-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 0;
+    border-bottom:1px solid var(--line-soft);
+    font-size:13.5px;
+  }
+  .hist-row:last-child{border-bottom:none;}
+  .hist-date{font-family:var(--font-mono);color:var(--ink-soft);}
+  .hist-score{font-family:var(--font-mono);font-weight:600;}
+  .empty-note{color:var(--ink-soft);font-size:14px;}
+
+  /* quiz */
+  .progress-label{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:18px;
+  }
+  .passage-box{
+    background:#F7F8FB;
+    border:1px solid var(--line-soft);
+    border-left:3px solid var(--primary);
+    border-radius:6px;
+    padding:14px 16px;
+    margin-bottom:14px;
+    font-size:14.5px;
+    white-space:pre-line;
+    color:var(--ink);
+  }
+  .passage-title{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--primary);
+    margin-bottom:6px;
+  }
+  .q-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+    margin-bottom:16px;
+  }
+  .q-tag{
+    display:inline-block;
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    background:var(--line-soft);
+    padding:2px 8px;
+    border-radius:4px;
+    margin-bottom:10px;
+  }
+  .q-prompt{font-size:15.5px;font-weight:500;margin-bottom:14px;}
+  .options{display:flex;flex-direction:column;gap:8px;}
+  .opt{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    cursor:pointer;
+    transition:border-color .12s ease, background .12s ease;
+  }
+  .opt:hover{border-color:var(--primary);}
+  .opt.selected{border-color:var(--primary);background:#EEF2F9;}
+  .bubble{
+    flex:0 0 auto;
+    width:26px;height:26px;
+    border-radius:50%;
+    border:1.5px solid var(--ink-soft);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);
+    font-size:12px;font-weight:600;
+    color:var(--ink-soft);
+    transition:all .12s ease;
+  }
+  .opt.selected .bubble{
+    background:var(--primary);
+    border-color:var(--primary);
+    color:#fff;
+  }
+  .opt-text{font-size:14.5px;}
+  .opt input{display:none;}
+
+  .submit-bar{
+    display:flex;
+    justify-content:center;
+    margin:24px 0 8px;
+  }
+
+  /* results */
+  .score-hero{
+    text-align:center;
+    padding:22px 0 6px;
+  }
+  .score-big{
+    font-family:var(--font-mono);
+    font-size:44px;
+    font-weight:600;
+    color:var(--primary);
+  }
+  .score-label{color:var(--ink-soft);font-size:13.5px;margin-top:2px;}
+  .cat-breakdown{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap;}
+  .cat-box{
+    flex:1;
+    min-width:120px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 14px;
+    text-align:center;
+  }
+  .cat-box .cname{font-size:12.5px;color:var(--ink-soft);margin-bottom:4px;}
+  .cat-box .cpct{font-family:var(--font-mono);font-size:22px;font-weight:600;}
+  .bar-track{height:6px;background:var(--line-soft);border-radius:3px;margin-top:8px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--primary);border-radius:3px;}
+
+  .advice-box{
+    background:var(--highlight-bg);
+    border:1px solid #EAD3A0;
+    border-radius:8px;
+    padding:14px 16px;
+    margin:18px 0;
+    font-size:14px;
+  }
+  .advice-box b{color:var(--highlight);}
+
+  .review-item{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    font-size:14px;
+  }
+  .review-item.wrong{border-left:4px solid var(--wrong);}
+  .review-item.right{border-left:4px solid var(--correct);}
+  .review-q{font-weight:600;margin-bottom:6px;}
+  .review-ans{margin:2px 0;color:var(--ink-soft);}
+  .review-ans .tag-wrong{color:var(--wrong);font-weight:600;}
+  .review-ans .tag-correct{color:var(--correct);font-weight:600;}
+  .review-explain{margin-top:6px;font-size:13.5px;color:var(--ink-soft);}
+
+  .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px;}
+  .ghost-btn{
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:13.5px;
+    padding:10px 16px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .ghost-btn:hover{border-color:var(--primary);}
+
+  .hidden{display:none !important;}
+  .listening-note{font-size:13px;color:var(--ink-soft);margin-top:10px;}
+  footer{text-align:center;color:var(--ink-soft);font-size:12.5px;margin-top:36px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">多益重建計畫・練習測驗</div>
+    <h1>先看得懂，再選答案</h1>
+    <p class="sub">涵蓋單字、文法、閱讀三大題型。測驗後會分析你在哪一類最弱，並給出對應的加強建議；每次成績會存起來，方便你追蹤一整年的進步。</p>
+  </header>
+
+  <!-- SETUP SCREEN -->
+  <div id="setup-screen">
+    <div class="panel">
+      <h2>選擇練習模式</h2>
+      <div class="mode-row" id="mode-row">
+        <button class="mode-btn active" data-mode="all">全部類別（綜合測驗）</button>
+        <button class="mode-btn" data-mode="vocab">只練單字</button>
+        <button class="mode-btn" data-mode="grammar">只練文法</button>
+        <button class="mode-btn" data-mode="reading">只練閱讀</button>
+        <button class="mode-btn" data-mode="wrong">複習錯題</button>
+      </div>
+      <div class="mode-hint" id="mode-hint">建議每週用「全部類別」做一次綜合測驗，貼近正式考試的混合節奏。</div>
+      <button class="start-btn" id="start-btn">開始測驗</button>
+      <div class="listening-note">＊聽力需要真人語音，這個工具無法產生音檔，聽力練習請搭配 study-plan.md 裡建議的 VoiceTube／官方音檔。</div>
+    </div>
+
+    <div class="panel">
+      <h2>歷史紀錄</h2>
+      <div id="history-list"><div class="empty-note">還沒有測驗紀錄，完成第一次測驗後會顯示在這裡。</div></div>
+    </div>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div id="quiz-screen" class="hidden">
+    <div class="progress-label" id="progress-label"></div>
+    <form id="quiz-form"></form>
+    <div class="submit-bar">
+      <button type="button" class="start-btn" id="submit-btn">交卷，看結果</button>
+    </div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div id="result-screen" class="hidden">
+    <div class="panel score-hero">
+      <div class="score-big" id="score-big">0%</div>
+      <div class="score-label" id="score-label">本次整體正確率</div>
+      <div class="cat-breakdown" id="cat-breakdown"></div>
+    </div>
+
+    <div class="panel">
+      <div class="advice-box" id="advice-box"></div>
+    </div>
+
+    <div class="panel">
+      <h2>逐題檢討</h2>
+      <div id="review-list"></div>
+    </div>
+
+    <div class="action-row">
+      <button class="ghost-btn" id="retry-wrong-btn">只複習這次的錯題</button>
+      <button class="ghost-btn" id="back-home-btn">回到主畫面</button>
+    </div>
+  </div>
+
+  <footer>成績記錄在你目前使用的這個瀏覽器（localStorage），換裝置或清除瀏覽器資料會看不到之前的紀錄。</footer>
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+
+const PASSAGES = {
+  p1: { title: 'Office Memo', text:
+`To: All Staff
+From: Office Management
+Subject: Parking Lot Renovation
+
+Starting Monday, the parking lot behind the building will be closed for renovation. The work is expected to take two weeks. During this time, employees are asked to park at the public garage on Fifth Street. Parking passes will be provided at the front desk starting this Friday. We apologize for any inconvenience.` },
+  p2: { title: 'Email', text:
+`Dear Mr. Chen,
+
+Thank you for your order of 200 units of product A23. Your order will be shipped within five business days. Please note that due to high demand, delivery may take longer than usual. If you have any questions, feel free to contact our customer service team.
+
+Best regards,
+Sales Department` },
+  p3: { title: 'Advertisement', text:
+`Grand Opening Sale!
+
+Visit our new downtown branch this weekend and enjoy 20% off all items. The sale runs from Saturday to Sunday only. Members of our loyalty program receive an additional 5% discount. Don't miss this limited-time offer!` }
+};
+
+const QUESTIONS = [
+  // ---- VOCAB ----
+  {id:'v1',category:'vocab',prompt:'The company plans to _____ a new product next month.',
+    options:[{t:'launch',c:true},{t:'lend',c:false},{t:'lean',c:false},{t:'lack',c:false}],
+    explain:'"launch" 意指「推出（新產品）」，是商業情境中很常見的搭配用法。'},
+  {id:'v2',category:'vocab',prompt:'Please _____ the attached file before the meeting.',
+    options:[{t:'review',c:true},{t:'renew',c:false},{t:'remove',c:false},{t:'repeat',c:false}],
+    explain:'"review the file" 是固定搭配，意指「檢視／過目文件」。'},
+  {id:'v3',category:'vocab',prompt:'All employees must _____ the safety training session.',
+    options:[{t:'attend',c:true},{t:'attempt',c:false},{t:'attain',c:false},{t:'attach',c:false}],
+    explain:'"attend a session" 是「參加某場活動／課程」的固定用法。'},
+  {id:'v4',category:'vocab',prompt:'The flight was _____ due to heavy rain.',
+    options:[{t:'delayed',c:true},{t:'delivered',c:false},{t:'decided',c:false},{t:'deleted',c:false}],
+    explain:'"delayed" 意指「延誤」，常見於交通、班機情境。'},
+  {id:'v5',category:'vocab',prompt:'The manager agreed to _____ the deadline by two days.',
+    options:[{t:'extend',c:true},{t:'exchange',c:false},{t:'express',c:false},{t:'exclude',c:false}],
+    explain:'"extend the deadline" 是「延長期限」的固定搭配。'},
+  {id:'v6',category:'vocab',prompt:'New staff will _____ for one week before starting work.',
+    options:[{t:'train',c:true},{t:'trade',c:false},{t:'travel',c:false},{t:'treat',c:false}],
+    explain:'"train" 在此作不及物動詞，意指「接受訓練」。'},
+  {id:'v7',category:'vocab',prompt:'Customers can _____ orders through our website.',
+    options:[{t:'place',c:true},{t:'plant',c:false},{t:'plan',c:false},{t:'plate',c:false}],
+    explain:'"place an order" 是「下訂單」的固定搭配，TOEIC 高頻詞組。'},
+  {id:'v8',category:'vocab',prompt:'The invoice must be paid _____ 30 days.',
+    options:[{t:'within',c:true},{t:'among',c:false},{t:'between',c:false},{t:'beside',c:false}],
+    explain:'"within + 一段時間" 表示「在……之內」，例如 within 30 days。'},
+  {id:'v9',category:'vocab',prompt:'Please _____ your seatbelt before takeoff.',
+    options:[{t:'fasten',c:true},{t:'finish',c:false},{t:'fix',c:false},{t:'fold',c:false}],
+    explain:'"fasten your seatbelt" 是機艙廣播的經典固定用語。'},
+  {id:'v10',category:'vocab',prompt:'The report shows a significant _____ in monthly sales.',
+    options:[{t:'increase',c:true},{t:'incident',c:false},{t:'insurance',c:false},{t:'instance',c:false}],
+    explain:'"a significant increase in..." 是描述數據上升的常見句型。'},
+  {id:'v11',category:'vocab',prompt:'Could you please _____ your reservation by email?',
+    options:[{t:'confirm',c:true},{t:'conform',c:false},{t:'confront',c:false},{t:'conduct',c:false}],
+    explain:'"confirm a reservation" 意指「確認預約」，旅遊、訂位情境常見。'},
+  {id:'v12',category:'vocab',prompt:'We need to _____ the broken printer in the office.',
+    options:[{t:'replace',c:true},{t:'reply',c:false},{t:'relax',c:false},{t:'relate',c:false}],
+    explain:'"replace" 意指「更換」，用於故障設備的情境。'},
+
+  // ---- GRAMMAR ----
+  {id:'g1',category:'grammar',prompt:'She _____ to the office every day by bus.',
+    options:[{t:'go',c:false},{t:'goes',c:true},{t:'going',c:false},{t:'gone',c:false}],
+    explain:'主詞 She 為第三人稱單數，現在簡單式動詞需加 -s：goes。'},
+  {id:'g2',category:'grammar',prompt:'They _____ the report yesterday.',
+    options:[{t:'finish',c:false},{t:'finished',c:true},{t:'finishes',c:false},{t:'finishing',c:false}],
+    explain:'句中有明確過去時間點 yesterday，須用過去式 finished。'},
+  {id:'g3',category:'grammar',prompt:'The meeting _____ at 9 a.m. tomorrow.',
+    options:[{t:'start',c:false},{t:'starts',c:true},{t:'started',c:false},{t:'starting',c:false}],
+    explain:'描述既定行程／時刻表時，即使是未來的事也常用現在簡單式：starts。'},
+  {id:'g4',category:'grammar',prompt:'He is responsible _____ managing the team.',
+    options:[{t:'for',c:true},{t:'to',c:false},{t:'at',c:false},{t:'in',c:false}],
+    explain:'"be responsible for + Ving" 是固定搭配，意指「負責……」。'},
+  {id:'g5',category:'grammar',prompt:'If it rains tomorrow, we _____ the picnic.',
+    options:[{t:'cancel',c:false},{t:'will cancel',c:true},{t:'canceled',c:false},{t:'canceling',c:false}],
+    explain:'第一類條件句：If + 現在式, ... will + 原形動詞。'},
+  {id:'g6',category:'grammar',prompt:'The documents _____ by the manager already.',
+    options:[{t:'review',c:false},{t:'reviewed',c:false},{t:'have been reviewed',c:true},{t:'reviewing',c:false}],
+    explain:'documents 是被審查的對象（被動），搭配 already 提示現在完成式，故用現在完成被動式。'},
+  {id:'g7',category:'grammar',prompt:'There _____ many applicants for this position.',
+    options:[{t:'is',c:false},{t:'are',c:true},{t:'was',c:false},{t:'be',c:false}],
+    explain:'There be 句型須與後面的名詞一致，many applicants 為複數，故用 are。'},
+  {id:'g8',category:'grammar',prompt:'This is the man _____ helped me yesterday.',
+    options:[{t:'who',c:true},{t:'whom',c:false},{t:'which',c:false},{t:'whose',c:false}],
+    explain:'先行詞 man 為人，且在子句中做主詞（helped 的主詞），須用 who。'},
+  {id:'g9',category:'grammar',prompt:'Employees are required to wear ID badges _____ working hours.',
+    options:[{t:'during',c:true},{t:'while',c:false},{t:'for',c:false},{t:'since',c:false}],
+    explain:'"during + 名詞" 表示「在……期間」；while 後面須接子句，此處空格後為名詞，故用 during。'},
+  {id:'g10',category:'grammar',prompt:'She has worked here _____ five years.',
+    options:[{t:'for',c:true},{t:'since',c:false},{t:'from',c:false},{t:'at',c:false}],
+    explain:'"for + 一段時間" 表示「長達……」；since 後面須接明確起點（如某年份）。'},
+  {id:'g11',category:'grammar',prompt:'The email was sent to the wrong department _____ mistake.',
+    options:[{t:'by',c:true},{t:'for',c:false},{t:'in',c:false},{t:'at',c:false}],
+    explain:'"by mistake" 是固定片語，意指「不小心、誤……」。'},
+  {id:'g12',category:'grammar',prompt:'Our new office is _____ than the old one.',
+    options:[{t:'larger',c:true},{t:'large',c:false},{t:'largest',c:false},{t:'more large',c:false}],
+    explain:'句尾有 than，須用比較級；large 為單音節形容詞，比較級直接加 -er：larger。'},
+
+  // ---- READING ----
+  {id:'r1-1',category:'reading',passage:'p1',prompt:'What is the memo mainly about?',
+    options:[{t:'A new employee orientation program',c:false},{t:'A parking lot renovation',c:true},{t:'A change in office hours',c:false},{t:'A holiday schedule',c:false}],
+    explain:'備忘錄一開始就說明 parking lot ... will be closed for renovation，全文都在講這件事。'},
+  {id:'r1-2',category:'reading',passage:'p1',prompt:'Where should employees park during the renovation?',
+    options:[{t:"In the building's basement",c:false},{t:'At a garage on Fifth Street',c:true},{t:'On the street in front of the building',c:false},{t:'At a nearby shopping mall',c:false}],
+    explain:'文中明確寫出 park at the public garage on Fifth Street。'},
+  {id:'r1-3',category:'reading',passage:'p1',prompt:'When can employees pick up parking passes?',
+    options:[{t:'Starting Monday',c:false},{t:'Starting Friday',c:true},{t:'After the renovation is finished',c:false},{t:'They do not need a pass',c:false}],
+    explain:'文中提到 Parking passes will be provided ... starting this Friday。'},
+  {id:'r2-1',category:'reading',passage:'p2',prompt:'What did Mr. Chen most likely do before receiving this email?',
+    options:[{t:'He canceled an order.',c:false},{t:'He placed an order for product A23.',c:true},{t:'He requested a refund.',c:false},{t:'He applied for a job.',c:false}],
+    explain:'開頭寫 Thank you for your order of 200 units of product A23，可推知他先下了訂單。'},
+  {id:'r2-2',category:'reading',passage:'p2',prompt:'According to the email, when will the order be shipped?',
+    options:[{t:'Within five business days',c:true},{t:'Within one business day',c:false},{t:'Within one month',c:false},{t:'It has already been shipped',c:false}],
+    explain:'文中明確寫 shipped within five business days。'},
+  {id:'r2-3',category:'reading',passage:'p2',prompt:'Why might the delivery take longer than usual?',
+    options:[{t:'The product is out of stock.',c:false},{t:'There is a shipping company strike.',c:false},{t:'Demand for the product is high.',c:true},{t:'The factory is closed for repairs.',c:false}],
+    explain:'文中寫 due to high demand, delivery may take longer than usual。'},
+  {id:'r3-1',category:'reading',passage:'p3',prompt:'What is being advertised?',
+    options:[{t:'A job opening',c:false},{t:'A grand opening sale',c:true},{t:'A new loyalty program',c:false},{t:'A store closing sale',c:false}],
+    explain:'標題就是 Grand Opening Sale，全文都在介紹新店開幕優惠。'},
+  {id:'r3-2',category:'reading',passage:'p3',prompt:'How long does the sale last?',
+    options:[{t:'One week',c:false},{t:'One day',c:false},{t:'Saturday and Sunday only',c:true},{t:'The entire month',c:false}],
+    explain:'文中寫 The sale runs from Saturday to Sunday only。'},
+  {id:'r3-3',category:'reading',passage:'p3',prompt:'How can customers receive an additional discount?',
+    options:[{t:'By paying in cash',c:false},{t:'By shopping online',c:false},{t:'By being a loyalty program member',c:true},{t:'By bringing a friend',c:false}],
+    explain:'文中寫 Members of our loyalty program receive an additional 5% discount。'},
+];
+
+const CAT_LABEL = {vocab:'單字', grammar:'文法', reading:'閱讀'};
+
+const ADVICE = {
+  vocab: '單字量還不穩定，建議照計畫每天用 SRS（Anki／Quizlet）背 8–10 個新字，並且一定要搭配例句，不要只背中文意思。可以先從辦公室、旅遊、財務等主題字群開始。',
+  grammar: '文法規則掌握還不穩，建議先複習八大詞性、常見時態與主詞動詞一致這幾個基礎點，每次只練一個文法重點，搭配例句反覆造句會比死背規則有效。',
+  reading: '閱讀理解還需要加強，建議先練習「不查字典抓大意」，讀完一段先問自己「這段在講什麼」，再回頭找細節題的答案，並且練習控制每題作答時間。'
+};
+
+/* ---------------- STATE ---------------- */
+
+let currentMode = 'all';
+let currentQuestions = [];
+let userAnswers = {}; // id -> selected option index (within shuffled options)
+
+/* ---------------- STORAGE HELPERS (localStorage, for GitHub Pages hosting) ---------------- */
+
+async function loadHistory(){
+  try{
+    const raw = localStorage.getItem('toeic_history');
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+async function saveHistory(list){
+  try{ localStorage.setItem('toeic_history', JSON.stringify(list.slice(-50))); }catch(e){}
+}
+async function loadWrongIds(){
+  try{
+    const raw = localStorage.getItem('toeic_wrong_ids');
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+async function saveWrongIds(ids){
+  try{ localStorage.setItem('toeic_wrong_ids', JSON.stringify(ids)); }catch(e){}
+}
+
+/* ---------------- UTIL ---------------- */
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function pctOf(correct,total){
+  return total===0 ? 0 : Math.round((correct/total)*100);
+}
+
+/* ---------------- RENDER: HISTORY ---------------- */
+
+async function renderHistory(){
+  const list = await loadHistory();
+  const el = document.getElementById('history-list');
+  if(list.length===0){
+    el.innerHTML = '<div class="empty-note">還沒有測驗紀錄，完成第一次測驗後會顯示在這裡。</div>';
+    return;
+  }
+  el.innerHTML = list.slice().reverse().map(h=>{
+    const d = new Date(h.date);
+    const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+    return `<div class="hist-row"><span class="hist-date">${dateStr} · ${h.modeLabel}</span><span class="hist-score">${h.totalPct}%</span></div>`;
+  }).join('');
+}
+
+/* ---------------- MODE SELECTION ---------------- */
+
+const modeHints = {
+  all: '建議每週用「全部類別」做一次綜合測驗，貼近正式考試的混合節奏。',
+  vocab: '只出單字題，適合第一階段打底時集中練習。',
+  grammar: '只出文法題，適合針對某個文法弱點反覆練習。',
+  reading: '只出閱讀題，練習抓文章大意與細節定位。',
+  wrong: '只出上一次答錯的題目，適合考前或每週複習使用。'
+};
+
+document.getElementById('mode-row').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.mode-btn');
+  if(!btn) return;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+  document.getElementById('mode-hint').textContent = modeHints[currentMode];
+});
+
+document.getElementById('start-btn').addEventListener('click', startQuiz);
+
+async function startQuiz(){
+  let pool;
+  if(currentMode==='all'){
+    pool = QUESTIONS;
+  }else if(currentMode==='wrong'){
+    const wrongIds = await loadWrongIds();
+    pool = QUESTIONS.filter(q=>wrongIds.includes(q.id));
+    if(pool.length===0){
+      alert('目前沒有記錄到錯題，先完成一次「全部類別」或單類別測驗吧。');
+      return;
+    }
+  }else{
+    pool = QUESTIONS.filter(q=>q.category===currentMode);
+  }
+
+  currentQuestions = shuffle(pool).map(q=>({
+    ...q,
+    shuffledOptions: shuffle(q.options)
+  }));
+  userAnswers = {};
+
+  renderQuiz();
+  document.getElementById('setup-screen').classList.add('hidden');
+  document.getElementById('quiz-screen').classList.remove('hidden');
+  document.getElementById('result-screen').classList.add('hidden');
+  window.scrollTo(0,0);
+}
+
+/* ---------------- RENDER: QUIZ ---------------- */
+
+function renderQuiz(){
+  document.getElementById('progress-label').textContent = `共 ${currentQuestions.length} 題`;
+  const form = document.getElementById('quiz-form');
+  let html = '';
+  let lastPassage = null;
+
+  currentQuestions.forEach((q,qi)=>{
+    if(q.passage && q.passage!==lastPassage){
+      const p = PASSAGES[q.passage];
+      html += `<div class="passage-box"><div class="passage-title">${p.title}</div>${p.text}</div>`;
+      lastPassage = q.passage;
+    }else if(!q.passage){
+      lastPassage = null;
+    }
+
+    html += `<div class="q-card" data-qid="${q.id}">
+      <div class="q-tag">${CAT_LABEL[q.category]} · Q${qi+1}</div>
+      <div class="q-prompt">${q.prompt}</div>
+      <div class="options">`;
+
+    const letters = ['A','B','C','D'];
+    q.shuffledOptions.forEach((opt,oi)=>{
+      html += `<label class="opt" data-oi="${oi}">
+        <input type="radio" name="${q.id}" value="${oi}">
+        <span class="bubble">${letters[oi]}</span>
+        <span class="opt-text">${opt.t}</span>
+      </label>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  form.innerHTML = html;
+
+  form.querySelectorAll('.opt').forEach(optEl=>{
+    optEl.addEventListener('click', ()=>{
+      const card = optEl.closest('.q-card');
+      card.querySelectorAll('.opt').forEach(o=>o.classList.remove('selected'));
+      optEl.classList.add('selected');
+      optEl.querySelector('input').checked = true;
+      const qid = card.dataset.qid;
+      userAnswers[qid] = parseInt(optEl.dataset.oi,10);
+    });
+  });
+}
+
+document.getElementById('submit-btn').addEventListener('click', submitQuiz);
+
+/* ---------------- SUBMIT & RESULTS ---------------- */
+
+async function submitQuiz(){
+  const unanswered = currentQuestions.filter(q=>!(q.id in userAnswers));
+  if(unanswered.length>0){
+    const proceed = confirm(`還有 ${unanswered.length} 題沒作答，確定要交卷嗎？未作答視為答錯。`);
+    if(!proceed) return;
+  }
+
+  const catTotals = {vocab:{c:0,t:0}, grammar:{c:0,t:0}, reading:{c:0,t:0}};
+  const wrongIds = [];
+  const reviewData = [];
+
+  currentQuestions.forEach(q=>{
+    catTotals[q.category].t++;
+    const selIdx = userAnswers[q.id];
+    const isCorrect = selIdx!==undefined && q.shuffledOptions[selIdx].c;
+    if(isCorrect){ catTotals[q.category].c++; }
+    else{ wrongIds.push(q.id); }
+    const correctOpt = q.shuffledOptions.find(o=>o.c);
+    reviewData.push({
+      prompt:q.prompt,
+      category:q.category,
+      isCorrect,
+      selectedText: selIdx!==undefined ? q.shuffledOptions[selIdx].t : '（未作答）',
+      correctText: correctOpt.t,
+      explain: q.explain
+    });
+  });
+
+  const totalCorrect = Object.values(catTotals).reduce((s,c)=>s+c.c,0);
+  const totalCount = currentQuestions.length;
+  const totalPct = pctOf(totalCorrect,totalCount);
+
+  // save history
+  const modeLabelMap = {all:'全部類別', vocab:'單字', grammar:'文法', reading:'閱讀', wrong:'複習錯題'};
+  const history = await loadHistory();
+  history.push({
+    date: new Date().toISOString(),
+    modeLabel: modeLabelMap[currentMode],
+    totalPct,
+    vocabPct: catTotals.vocab.t? pctOf(catTotals.vocab.c,catTotals.vocab.t) : null,
+    grammarPct: catTotals.grammar.t? pctOf(catTotals.grammar.c,catTotals.grammar.t) : null,
+    readingPct: catTotals.reading.t? pctOf(catTotals.reading.c,catTotals.reading.t) : null
+  });
+  await saveHistory(history);
+  await saveWrongIds(wrongIds);
+
+  renderResults(totalPct, catTotals, reviewData);
+
+  document.getElementById('quiz-screen').classList.add('hidden');
+  document.getElementById('result-screen').classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+
+function renderResults(totalPct, catTotals, reviewData){
+  document.getElementById('score-big').textContent = totalPct + '%';
+
+  const breakdown = document.getElementById('cat-breakdown');
+  let bhtml = '';
+  let weakestCat = null, weakestPct = 101;
+  Object.keys(catTotals).forEach(cat=>{
+    const t = catTotals[cat];
+    if(t.t===0) return;
+    const p = pctOf(t.c,t.t);
+    if(p < weakestPct){ weakestPct = p; weakestCat = cat; }
+    bhtml += `<div class="cat-box">
+      <div class="cname">${CAT_LABEL[cat]}（${t.c}/${t.t}）</div>
+      <div class="cpct">${p}%</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${p}%"></div></div>
+    </div>`;
+  });
+  breakdown.innerHTML = bhtml;
+
+  const adviceBox = document.getElementById('advice-box');
+  if(weakestCat && weakestPct < 100){
+    adviceBox.innerHTML = `<b>本次最弱的類別：${CAT_LABEL[weakestCat]}（${weakestPct}%）</b><br>${ADVICE[weakestCat]}`;
+  }else if(weakestCat){
+    adviceBox.innerHTML = `<b>這回全對，很扎實！</b> 可以考慮切換到其他類別，或提高練習難度，持續累積更大的單字量與更複雜的題型。`;
+  }else{
+    adviceBox.innerHTML = `完成測驗！持續每週練習，弱點分析會隨著紀錄累積越來越準確。`;
+  }
+
+  const reviewList = document.getElementById('review-list');
+  reviewList.innerHTML = reviewData.map(r=>{
+    return `<div class="review-item ${r.isCorrect?'right':'wrong'}">
+      <div class="review-q">[${CAT_LABEL[r.category]}] ${r.prompt}</div>
+      <div class="review-ans">你的答案：<span class="${r.isCorrect?'tag-correct':'tag-wrong'}">${r.selectedText}</span></div>
+      ${r.isCorrect?'' : `<div class="review-ans">正確答案：<span class="tag-correct">${r.correctText}</span></div>`}
+      <div class="review-explain">${r.explain}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------------- NAV BUTTONS ---------------- */
+
+document.getElementById('retry-wrong-btn').addEventListener('click', async ()=>{
+  currentMode = 'wrong';
+  await startQuiz();
+});
+
+document.getElementById('back-home-btn').addEventListener('click', async ()=>{
+  document.getElementById('result-screen').classList.add('hidden');
+  document.getElementById('setup-screen').classList.remove('hidden');
+  await renderHistory();
+  window.scrollTo(0,0);
+});
+
+/* ---------------- INIT ---------------- */
+renderHistory();
+</script>
+</body>
+</html>
